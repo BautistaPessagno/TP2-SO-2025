@@ -1,0 +1,15 @@
+.DS_Store
+Image/x64BareBonesImage.vmdk
+Image/x64BareBonesImage.qcow2:
+Image/x64BareBonesImage.img
+*.out
+*.o
+*.obj
+*.exe
+*.bin
+*.map
+*.sym
+*.lst
+*.list
+*.log
+*.err
