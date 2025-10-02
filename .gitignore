@@ -24,3 +24,5 @@ Kernel/*.err
 *.list
 *.log
 *.err
+test_mm
+Kernel/test_mm

@@ -1,5 +1,5 @@
 // K&R-style free-list memory manager (freestanding, no libc)
-#include <memoryManager.h>
+#include <memory_manager.h>
 #include <stdint.h>
 
 // Estado interno (singleton)
@@ -62,6 +62,7 @@ static void insert_and_coalesce(Header *bp) {
 
 // Crea/Inicializa el memory manager en la dirección fija, con un pool fijo
 // inmediatamente después del manager hasta MEMORY_MANAGER_LAST_ADDRESS (exclusivo).
+
 MemoryManagerADT create_memory_manager(/* void* const restrict managed_memory, */ uint64_t memory_amount /* reservado */) {
     (void)memory_amount;
 

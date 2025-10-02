@@ -4,8 +4,9 @@
 #include <stddef.h>
 
 // ULL es para que el compilador sepa que es un unsigned long long
+//va desde el espacio libre hasta el espacio del SO
 #define MEMORY_MANAGER_FIRST_ADDRESS 0x0000000000100000ULL
-#define MEMORY_MANAGER_LAST_ADDRESS  0x00000000FFFFFFFFULL 
+#define MEMORY_MANAGER_LAST_ADDRESS  0x00000000003FFFFFULL 
 
 typedef long Align;
 
@@ -24,6 +25,7 @@ typedef struct MemoryManagerCDT {
     uint64_t memory_amount;   // bytes del pool
 } *MemoryManagerADT;
 
+//en nuestrop SO, em memory amount va a ser MEMORY_MANAGER_LAST_ADDRESS - MEMORY_MANAGER_FIRST_ADDRESS
 MemoryManagerADT create_memory_manager(/* void* const restrict managed_memory, */ uint64_t memory_amount /* reservado para futuro */);
 void *mm_malloc(size_t nbytes);
 void  mm_free(void *ptr);
