@@ -1,5 +1,5 @@
 // K&R-style free-list memory manager (freestanding, no libc)
-#include <memory_manager.h>
+#include "../include/memory_manager.h"
 #include <stdint.h>
 
 // Estado interno (singleton)
