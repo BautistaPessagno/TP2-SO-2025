@@ -1,6 +1,7 @@
 #include "../include/memory_manager.h"
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/resource.h>
 
 static Header base;                 // ancla de la free-list (lista circular)
 static MemoryManagerADT mm = 0;     // manager en dirección fija
@@ -41,13 +42,24 @@ Header *findBlock(Header *header, size_t memory_required) {
     }
     
     Header *current = header;
+    Header *prev = NULL;
     
-    do {
+    if (current->s.units == memory_required) { // el primer bloque tiene la memoria requerida
+        header = header->s.next; // saco el primer bloque de la lista.
+        return current;
+    }
+
+    prev = current;
+    current = current->s.next;
+
+    while (current != NULL){
         if (current->s.units == memory_required) {
+            prev->s.next = current->s.next;
             return current;
         }
+        prev = current;
         current = current->s.next;
-    } while (current != NULL && current != header);
+    }
     
     return NULL;
 }
@@ -105,6 +117,66 @@ MemoryManagerADT create_memory_manager(/* void* const restrict managed_memory, *
     return mm;
 }
 
+// Chequeo si end position de P1 (p1 + units) es igual a la starting position de P2]
+// no se si estan bien los casteos
+int is_contiguous(Header *p1, Header *p2){
+    return (uint8_t *)p1 + (uint8_t)p1->s.units == (uint8_t *)p2 - 1 ;
+}
+
+
+// Si no se puede llegar a la starting position de la memoria desde la starting position del nuevo bloque sumando bloques de ese tamano entonces los dos bloques que se estan analizando no fueron dividos al mismo tiempo (No son buddies)
+// Suena raro pero esta chequeadisimo.
+int is_buddy(Header *p1){
+    uint8_t step = p1->s.units * 2;
+    uint8_t *aux = (uint8_t *) p1;
+    while (aux > mm->pool_start) {
+        if (aux == mm->pool_start) {
+            return 1;
+        }
+        aux -= step;
+    }
+    return 0;
+}
+
+// Retorna 1 si coalesco, para indicar que se puede seguir coalescando.
+int coalesce(){
+    Header *p = mm->free;
+
+    while (p->s.next != NULL) {
+        if((p->s.units == p->s.next->s.units) && is_contiguous(p, p->s.next) && is_buddy(p)){
+            p->s.units = p->s.units * 2;
+            p->s.next = p->s.next->s.next;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+void insert(Header *bp){
+    Header *p = mm->free;
+
+    if (bp < p) {
+        bp->s.next = p;
+        mm->free = bp;
+        return;
+    }
+
+    // Buscar posición por dirección (lista ordenanda ascendentemente)
+    while (p->s.next != NULL) {
+        if (bp < p->s.next) {
+            bp->s.next = p->s.next;
+            p->s.next = bp;
+            return;
+        }
+
+        p = p->s.next; 
+    }
+
+    p->s.next = bp;
+    return;
+
+}
+
 
 void *mm_malloc(size_t nbytes) {
     if (mm == 0 || nbytes == 0) {
@@ -129,10 +201,27 @@ void *mm_malloc(size_t nbytes) {
         }
         
         splitHeader(prevp);
-        p = findBlock(prevp, bytes_required); // itera toda la lista cuando ya sabe que solo pueden ser los primeros dos :(
+        p = findBlock(prevp, bytes_required); // itera toda la lista cuando ya  se sabe que solo pueden ser los primeros dos :(
     }
 
     // Return pointer to the payload (after the header)
     return (void *)(p + 1);
 }
+
+void mm_free(void *ptr) {
+    if (mm == 0 || ptr == 0) {
+        return;
+    }
+
+    Header *bp = (Header *)ptr - 1; 
+
+    if ((uint8_t *)bp < mm->pool_start || (uint8_t *)bp >= mm->pool_end) { // castea a (uint8_t *) para comparar direcciones. 
+        return; // ignorar puntero inválido
+    }
+
+    insert(bp);
+    while (coalesce());
+}
+
+
 
