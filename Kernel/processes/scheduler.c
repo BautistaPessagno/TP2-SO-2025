@@ -125,7 +125,7 @@ int sched_set_status(uint16_t pid, ProcessState new_state) {
     }
     
     switch (new_state) {
-        case READY:
+        case READY: // ACA FALTA DE RUNNING A BLOQUED POR SYSCALLS BLOQUEANTES????? CREO?
             if (p->state == BLOCKED) {
                 // Sacar de BLOCKED y encolar en READY
                 remove_node(scheduler->blocked, node);
@@ -144,7 +144,7 @@ int sched_set_status(uint16_t pid, ProcessState new_state) {
             break;
             
         default:
-            return -1; // Estados no permitidos
+            return -1;
     }
     
     return 0;
@@ -193,8 +193,6 @@ void *schedule(void *prev_sp) {
             Process *currentProc = (Process*)currentNode->data;
             if (currentProc != NULL && currentProc->state == RUNNING) {
                 currentProc->stackPos = prev_sp;
-                
-                // Si sigue vivo y no bloqueado, reencolar
                 currentProc->state = READY;
                 push_back(scheduler->ready[currentProc->priority], currentNode);
             }
@@ -212,12 +210,6 @@ void *schedule(void *prev_sp) {
                 sched_yield();
             }
         }
-    }
-    
-    // Verificar kill foreground
-    if (kill_foreground_flag) {
-        kill_foreground_flag = 0;
-        // TODO: implementar lógica de kill foreground
     }
     
     // Buscar siguiente proceso (de mayor a menor prioridad)
