@@ -25,26 +25,22 @@ static uint8_t kill_foreground_flag = 0;
 static void *idle_stack_pointer = NULL;
 
 // Helpers para LinkedListADT
-static void push_back(LinkedListADT list, void *data) {
-    if (list != NULL && data != NULL) {
-        // TODO: implementar push_back en LinkedListADT
-        // Por ahora asumimos que existe
+static void push_back(LinkedListADT list, Node *node) {
+    if (list != NULL && node != NULL) {
+        appendNode(list, node);
     }
 }
 
-static void *pop_front(LinkedListADT list) {
+static Node *pop_front(LinkedListADT list) {
     if (list != NULL) {
-        // TODO: implementar pop_front en LinkedListADT
-        // Por ahora asumimos que existe
-        return NULL;
+        return popFront(list);
     }
     return NULL;
 }
 
 static void remove_node(LinkedListADT list, Node *node) {
     if (list != NULL && node != NULL) {
-        // TODO: implementar remove_node en LinkedListADT
-        // Por ahora asumimos que existe
+        (void)removeNode(list, node);
     }
 }
 
@@ -102,27 +98,15 @@ int sched_register_process(Process *p) {
         return -1; // PID duplicado
     }
     
-    // Crear nodo para el proceso
-    Node *node = mm_malloc(sizeof(Node));
+    // Crear el Node una sola vez y encolarlo en READY
+    int prio = (p->priority < SCHED_READY_LEVELS) ? p->priority : 0;
+    Node *node = appendElement(scheduler->ready[prio], (void *)p);
     if (node == NULL) {
         return -1;
     }
-    
-    node->data = p;
-    node->next = NULL;
-    
-    // Asignar al índice
+    // Guardar el Node* para moverlo entre listas en O(1)
     scheduler->index[p->pid] = node;
-    
-    // Encolar en cola READY de su prioridad
-    if (p->priority < SCHED_READY_LEVELS) {
-        push_back(scheduler->ready[p->priority], node);
-        p->state = READY;
-    } else {
-        // Prioridad inválida, usar 0
-        push_back(scheduler->ready[0], node);
-        p->state = READY;
-    }
+    p->state = READY;
     
     return 0;
 }
@@ -196,7 +180,7 @@ int sched_set_priority(uint16_t pid, uint8_t prio) {
     return 0;
 }
 
-// Planificación principal
+// ------------------------- MAIN MAIN  REVISAR ACA 
 void *schedule(void *prev_sp) {
     if (scheduler == NULL) {
         return idle_stack_pointer;
@@ -211,10 +195,21 @@ void *schedule(void *prev_sp) {
                 currentProc->stackPos = prev_sp;
                 
                 // Si sigue vivo y no bloqueado, reencolar
-                if (currentProc->state == RUNNING) {
-                    currentProc->state = READY;
-                    push_back(scheduler->ready[currentProc->priority], currentNode);
-                }
+                currentProc->state = READY;
+                push_back(scheduler->ready[currentProc->priority], currentNode);
+            }
+        }
+    }
+    
+    // Verificar ctrl C (kill foreground)
+    if (kill_foreground_flag) {
+        kill_foreground_flag = 0;
+        Node *curNode = scheduler->index[scheduler->currentPid];
+        if (curNode != NULL) {
+            Process *cur = (Process*)curNode->data;
+            if (cur != NULL && cur->fileDescriptors[STDIN] == STDIN) {
+                sched_kill_current(-1);
+                sched_yield();
             }
         }
     }
@@ -315,7 +310,7 @@ int sched_kill_current(int32_t ret) {
 
 // Matar proceso en foreground
 void sched_kill_foreground(void) {
-    kill_foreground_flag = 1;
+    kill_foreground_flag = 1;  // esta flag podria estar en el adt del scheduler, por ahora la tenemos global oooo
 }
 
 // Obtener snapshots para ps()

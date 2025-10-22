@@ -156,7 +156,8 @@ void freeProcess(Process *p) {
     }
     
     if (p->zombieChildren != NULL) {
-        // TODO: implementar freeLinkedListADT
+        freeLinkedListADTDeep((LinkedListADT)p->zombieChildren);
+        p->zombieChildren = NULL;
     }
     
     if (p->stackBase != NULL) {
@@ -185,7 +186,15 @@ int getZombiesSnapshots(int idx, ProcessSnapshot arr[], Process *proc) {
         return idx;
     }
     
-    // TODO: implementar iteración sobre LinkedListADT
+    LinkedListADT list = (LinkedListADT)proc->zombieChildren;
+    begin(list);
+    while (hasNext(list) == 1) {
+        Process *z = (Process *)next(list);
+        if (z != NULL) {
+            loadSnapshot(&arr[idx], z);
+            idx++;
+        }
+    }
     return idx;
 }
 
