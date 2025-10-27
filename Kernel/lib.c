@@ -1,5 +1,14 @@
 #include <stdint.h>
 #include <lib.h>
+#include <stddef.h>
+
+size_t strlen(const char * s)
+{
+    size_t n = 0;
+    if (s == 0) return 0;
+    while (s[n] != 0) n++;
+    return n;
+}
 
 void * memset(void * destination, int32_t c, uint64_t length)
 {

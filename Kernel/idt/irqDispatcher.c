@@ -1,4 +1,5 @@
 #include <time.h>
+#include <scheduler.h>
 #include <stdint.h>
 #include <keyboard.h>
 
@@ -18,7 +19,8 @@ uint8_t irqDispatcher(uint64_t irq) {
 }
 
 static uint8_t int_20() {
-	timer_handler();
+    timer_handler();
+    sched_tick_isr();
 	return 0;
 }
 

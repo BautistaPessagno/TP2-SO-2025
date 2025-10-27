@@ -19,4 +19,9 @@
 #define ACS_DATA        (ACS_PRESENT | ACS_DSEG | ACS_WRITE)
 #define ACS_STACK       (ACS_PRESENT | ACS_DSEG | ACS_WRITE)
 
+/* Direcciones del Memory Manager */
+
+#define SEMAPHORE_MANAGER_ADDRESS 0x70000 // SemaphoreCDT
+#define PIPE_MANAGER_ADDRESS 0x80000	  // PipeManagerCDT
+
 #endif

@@ -51,6 +51,9 @@ typedef struct ProcessSnapshot {
 extern void * _initialize_stack_frame(void (*entry)(void*, void*),
                                       void *func, void *stack_end, void *arg1, void *arg2);
 
+// Minimal kernel-level helpers referenced by processes.c
+int killCurrentProcess(int32_t retValue);
+
 // Inicializa un proceso con todos sus componentes
 void initProcess(Process *p,
                  uint16_t pid, uint16_t parentPid,

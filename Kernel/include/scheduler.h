@@ -46,4 +46,13 @@ ProcessSnapshotList *sched_get_snapshot(void);
 // Timer/Quantum
 void sched_tick_isr(void);
 
+// Idle stack configuration (used by ISR when no READY tasks)
+void sched_set_idle_stack(void *idle_sp);
+
+// Compatibility shims for legacy IPC code that expects these names
+static inline uint16_t getpid(void) { return sched_getpid(); }
+static inline void yield(void) { sched_yield(); }
+static inline int setStatus(uint16_t pid, ProcessState st) { return sched_set_status(pid, st); }
+static inline int processIsAlive(uint16_t pid) { (void)pid; return 1; }
+
 #endif

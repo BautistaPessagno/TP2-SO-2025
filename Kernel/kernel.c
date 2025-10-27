@@ -7,6 +7,10 @@
 #include <fonts.h>
 #include <syscallDispatcher.h>
 #include <sound.h>
+#include <memory_manager.h>
+#include <semaphore_manager.h>
+#include <pipe_manager.h>
+#include <scheduler.h>
 
 // extern uint8_t text;
 // extern uint8_t rodata;
@@ -49,11 +53,18 @@ void * initializeKernelBinary(){
 }
 
 int main(){	
-	load_idt();
+    // Initialize core managers
+    create_memory_manager(0);
+    createSemaphoreManager();
+    createPipeManager();
+    sched_init(4);
+    sched_set_idle_stack(getStackBase());
+
+    load_idt();
 
 	setFontSize(2);
 	
-	((EntryPoint)shellModuleAddress)();
+    ((EntryPoint)shellModuleAddress)();
 
 	__builtin_unreachable();
 

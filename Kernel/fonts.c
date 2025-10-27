@@ -82,7 +82,7 @@ void clearPreviousCharacter(void);
 
 static uint32_t uintToBase(uint64_t value, char * buffer, uint32_t base);
 static void printBase(uint64_t value, uint32_t base);
-static inline int64_t strlen(const char * str);
+static inline int64_t kstrlen(const char * str);
 
 // * Uses inline to avoid stack frames on hot paths *
 static inline void renderFromBitmap(char * bitmap, uint64_t xBase, uint64_t yBase) {
@@ -176,7 +176,7 @@ int32_t printToFd(int32_t fd, const char * string, int32_t count) {
 
 // Prints `string` Null terminated string to `STDOUT`
 void print(const char * string) {
-    printToFd(FD_STDOUT, string, strlen(string));
+    printToFd(FD_STDOUT, string, kstrlen(string));
 }
 
 // Jumps to the next line, does not print an empty line
@@ -298,7 +298,7 @@ static uint32_t uintToBase(uint64_t value, char * buffer, uint32_t base) {
 	return digits;
 }
 
-static inline int64_t strlen(const char * str) {
+static inline int64_t kstrlen(const char * str) {
     int64_t length = 0;
     while (str[length] != 0) {
         length++;

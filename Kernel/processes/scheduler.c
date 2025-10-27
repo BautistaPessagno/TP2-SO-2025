@@ -23,6 +23,13 @@ typedef struct Scheduler {
 static Scheduler *scheduler = NULL;
 static uint8_t kill_foreground_flag = 0;
 static void *idle_stack_pointer = NULL;
+void sched_set_idle_stack(void *idle_sp) {
+    idle_stack_pointer = idle_sp;
+}
+// Kernel-facing minimal helper to allow process exit from wrapper
+int killCurrentProcess(int32_t ret) {
+    return sched_kill_current(ret);
+}
 
 // Helpers para LinkedListADT
 static void push_back(LinkedListADT list, Node *node) {
@@ -183,7 +190,7 @@ int sched_set_priority(uint16_t pid, uint8_t prio) {
 // ------------------------- MAIN MAIN  REVISAR ACA 
 void *schedule(void *prev_sp) {
     if (scheduler == NULL) {
-        return idle_stack_pointer;
+        return prev_sp;
     }
     
     // Guardar SP del proceso saliente si estaba RUNNING
@@ -222,15 +229,15 @@ void *schedule(void *prev_sp) {
     }
     
     if (nextNode == NULL) {
-        // No hay procesos READY, usar idle
+        // No hay procesos READY: no cambiar de contexto
         scheduler->currentPid = 0;
-        return idle_stack_pointer;
+        return prev_sp;
     }
     
     Process *nextProc = (Process*)nextNode->data;
     if (nextProc == NULL) {
         scheduler->currentPid = 0;
-        return idle_stack_pointer;
+        return prev_sp;
     }
     
     // Configurar proceso entrante
@@ -238,7 +245,8 @@ void *schedule(void *prev_sp) {
     nextProc->state = RUNNING;
     scheduler->remainingTicks = scheduler->quantumTicks;
     
-    return nextProc->stackPos;
+    // Si no hay stackPos válido, conservar contexto actual
+    return nextProc->stackPos != NULL ? nextProc->stackPos : prev_sp;
 }
 
 // Obtener PID actual

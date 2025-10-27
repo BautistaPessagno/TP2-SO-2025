@@ -1,7 +1,7 @@
 include Makefile.inc
 
 KERNEL=kernel.bin
-SOURCES=$(wildcard *.c ./drivers/*.c ./idt/*.c)
+SOURCES=$(wildcard *.c ./drivers/*.c ./idt/*.c ./lib/*.c ./processes/*.c ./pipes/*.c ./semaphore/*.c) ./memory/memory_manager.c ./memory/syscall.c
 SOURCES_ASM=$(wildcard asm/*.asm)
 HOT_OBJECTS=./drivers/video.o fonts.o # Compiled with -O3
 OBJECTS=$(SOURCES:.c=.o)

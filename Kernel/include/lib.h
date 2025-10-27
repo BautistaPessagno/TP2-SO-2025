@@ -3,9 +3,11 @@
 
 #include <stdint.h>
 #include <fonts.h>
+#include <stddef.h>
 
 #define EOF -1
 
+size_t strlen(const char * s);
 void * memset(void * destination, int32_t character, uint64_t length);
 void * memcpy(void * destination, const void * source, uint64_t length);
 void printf(const char * string);

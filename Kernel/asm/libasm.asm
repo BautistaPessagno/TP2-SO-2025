@@ -1,5 +1,7 @@
 GLOBAL cpuVendor
 GLOBAL getKeyboardBuffer
+GLOBAL _xchg
+GLOBAL _initialize_stack_frame
 
 GLOBAL getSecond
 GLOBAL getMinute
@@ -119,3 +121,26 @@ setSpeaker:
 	mov rsp, rbp
 	pop rbp
 	ret
+
+; Atomic exchange: returns previous *addr, stores newValue at *addr
+; uint64_t _xchg(volatile uint64_t *addr, uint64_t newValue)
+_xchg:
+    push rbp
+    mov rbp, rsp
+    mov rax, rsi        ; rax = newValue
+    lock xchg [rdi], rax ; swap *addr with rax atomically
+    mov rsp, rbp
+    pop rbp
+    ret
+
+; void* _initialize_stack_frame(void (*entry)(void*, void*), void *func, void *stack_end, void *arg1, void *arg2)
+; For now, just return an aligned stack pointer. The scheduler/ISR glue is not switching yet.
+_initialize_stack_frame:
+    push rbp
+    mov rbp, rsp
+    ; rdx has stack_end
+    mov rax, rdx
+    and rax, -16              ; align to 16 bytes
+    mov rsp, rbp
+    pop rbp
+    ret

@@ -6,7 +6,7 @@
 #include <defs.h>
 #include <memory_manager.h>
 #include <linkedListADT.h>
-#include <pipeManager.h>
+#include <pipe_manager.h>
 #include <processes.h>
 #include <scheduler.h>
 #include <interrupts.h>

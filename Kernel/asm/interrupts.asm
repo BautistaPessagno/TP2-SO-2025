@@ -20,6 +20,7 @@ EXTERN irqDispatcher
 EXTERN syscallDispatcher
 EXTERN exceptionDispatcher
 EXTERN getStackBase
+EXTERN schedule
 
 SECTION .text
 
@@ -64,17 +65,22 @@ SECTION .text
 %endmacro
 
 %macro irqHandlerMaster 1
-	pushState
+    pushState
 
-	mov rdi, %1 ; pass argument to irqDispatcher
-	call irqDispatcher
+    mov rdi, %1 ; pass argument to irqDispatcher
+    call irqDispatcher
 
-	; signal pic EOI (End of Interrupt)
-	mov al, 20h
-	out 20h, al
+    ; Call scheduler to possibly pick next task
+    mov rdi, rsp ; prev_sp points to saved regs frame
+    call schedule
+    mov rsp, rax ; switch to next task's stack
 
-	popState
-	iretq
+    ; signal pic EOI (End of Interrupt)
+    mov al, 20h
+    out 20h, al
+
+    popState
+    iretq
 %endmacro
 
 %macro exceptionHandler 1
