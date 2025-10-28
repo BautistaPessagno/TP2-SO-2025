@@ -24,5 +24,9 @@ Kernel/*.err
 *.list
 *.log
 *.err
+# Userland build artifacts
+Userland/**/*.o
+Userland/**/*.bin
+Userland/*.a
 test_mm
 Kernel/test_mm
