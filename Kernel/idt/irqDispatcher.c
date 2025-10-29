@@ -20,8 +20,7 @@ uint8_t irqDispatcher(uint64_t irq) {
 
 static uint8_t int_20() {
     timer_handler();
-    sched_tick_isr();
-	return 0;
+    return 0;
 }
 
 static uint8_t int_21() {

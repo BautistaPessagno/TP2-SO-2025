@@ -44,7 +44,7 @@ void sched_kill_foreground(void);
 ProcessSnapshotList *sched_get_snapshot(void);
 
 // Timer/Quantum
-void sched_tick_isr(void);
+void *sched_tick_isr(void *current_sp);
 
 // Idle stack configuration (used by ISR when no READY tasks)
 void sched_set_idle_stack(void *idle_sp);

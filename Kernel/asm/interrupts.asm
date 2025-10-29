@@ -22,6 +22,8 @@ EXTERN exceptionDispatcher
 EXTERN getStackBase
 EXTERN schedule
 
+EXTERN sched_tick_isr
+
 SECTION .text
 
 %macro pushState 0
@@ -70,10 +72,7 @@ SECTION .text
     mov rdi, %1 ; pass argument to irqDispatcher
     call irqDispatcher
 
-    ; Call scheduler to possibly pick next task
-    mov rdi, rsp ; prev_sp points to saved regs frame
-    call schedule
-    mov rsp, rax ; switch to next task's stack
+
 
     ; signal pic EOI (End of Interrupt)
     mov al, 20h
@@ -167,7 +166,22 @@ picSlaveMask:
 
 ; 8254 Timer (Timer Tick)
 _irq00Handler:
-	irqHandlerMaster 0
+    pushState
+
+    mov rdi, 0 ; pass argument to irqDispatcher
+    call irqDispatcher
+
+    ; Pass current saved stack to scheduler tick and use returned stack
+    mov rdi, rsp ; prev_sp points to saved regs frame
+    call sched_tick_isr
+    mov rsp, rax ; possibly switch to next task's stack
+
+    ; signal pic EOI (End of Interrupt)
+    mov al, 20h
+    out 20h, al
+
+    popState
+    iretq
 
 ; Keyboard
 _irq01Handler:

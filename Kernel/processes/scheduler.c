@@ -325,19 +325,18 @@ ProcessSnapshotList *sched_get_snapshot(void) {
 }
 
 // ISR del timer
-void sched_tick_isr(void) {
+void *sched_tick_isr(void *current_sp) {
     if (scheduler == NULL) {
-        return;
+        return current_sp;
     }
     
     if (scheduler->remainingTicks > 0) {
         scheduler->remainingTicks--;
+        return current_sp;
     }
     
-    if (scheduler->remainingTicks == 0) {
-        // Forzar context switch
-        // TODO: implementar llamada a schedule() desde ISR
-    }
+    // Fin de quantum: delegar en schedule y retornar el nuevo SP
+    return schedule(current_sp);
 }
 
 #if 0
