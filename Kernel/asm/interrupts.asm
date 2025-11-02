@@ -15,6 +15,7 @@ GLOBAL _exceptionHandler06
 
 GLOBAL register_snapshot
 GLOBAL register_snapshot_taken
+GLOBAL _initialize_stack_frame
 
 EXTERN irqDispatcher
 EXTERN syscallDispatcher
@@ -128,6 +129,24 @@ SECTION .text
 	sti
 	iretq ; will pop USERLAND and jmp to it
 %endmacro
+
+_initialize_stack_frame:
+    mov r10, rsp 	; Preservar rsp (usar r10 para no pisar arg2 en r8)
+    mov r11, rbp		; Preservar rbp
+    mov rsp, rdx 	; Carga sp del proceso
+    mov rbp, rdx
+    push 0x0
+    push rdx
+    push 0x202
+    push 0x8
+    push rdi
+    mov rdi, rsi 		; Primer argumento de wrapper: fn
+    mov rsi, r8		; Segundo argumento de wrapper: argv
+    pushState
+    mov rax, rsp
+    mov rsp, r10
+    mov rbp, r11
+    ret
 
 _hlt:
 	sti

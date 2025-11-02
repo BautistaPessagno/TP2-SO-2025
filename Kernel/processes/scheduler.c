@@ -132,7 +132,7 @@ int sched_set_status(uint16_t pid, ProcessState new_state) {
     }
     
     switch (new_state) {
-        case READY: // ACA FALTA DE RUNNING A BLOQUED POR SYSCALLS BLOQUEANTES????? CREO?
+        case READY:
             if (p->state == BLOCKED) {
                 // Sacar de BLOCKED y encolar en READY
                 remove_node(scheduler->blocked, node);
@@ -147,6 +147,12 @@ int sched_set_status(uint16_t pid, ProcessState new_state) {
                 remove_node(scheduler->ready[p->priority], node);
                 push_back(scheduler->blocked, node);
                 p->state = BLOCKED;
+            } else if (p->state == RUNNING) {
+                // Bloquear proceso en ejecución (syscalls bloqueantes)
+                p->state = BLOCKED;
+                push_back(scheduler->blocked, node);
+                // Forzar cambio de contexto
+                sched_yield();
             }
             break;
             
@@ -319,9 +325,27 @@ ProcessSnapshotList *sched_get_snapshot(void) {
         return NULL;
     }
     
-    // TODO: implementar recolección de snapshots
-    // Por ahora retornamos NULL
-    return NULL;
+    ProcessSnapshotList *snapshotList = mm_malloc(sizeof(ProcessSnapshotList));
+    if (snapshotList == NULL) {
+        return NULL;
+    }
+    snapshotList->snapshots = mm_malloc(sizeof(ProcessSnapshot) * SCHED_MAX_PROCS);
+    if (snapshotList->snapshots == NULL) {
+        return NULL;
+    }
+    snapshotList->count = 0;
+    snapshotList->capacity = SCHED_MAX_PROCS;
+    
+    for (int i = 0; i < SCHED_MAX_PROCS; i++) {
+        if (scheduler->index[i] != NULL) {
+            Process *p = (Process*)scheduler->index[i]->data;
+            if (p != NULL) {
+                snapshotList->snapshots[i] = *loadSnapshot(&snapshotList->snapshots[i], p);
+                snapshotList->count++;
+            }
+        }
+    }   
+    return snapshotList;
 }
 
 // ISR del timer

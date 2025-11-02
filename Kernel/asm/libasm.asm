@@ -1,7 +1,7 @@
 GLOBAL cpuVendor
 GLOBAL getKeyboardBuffer
 GLOBAL _xchg
-GLOBAL _initialize_stack_frame
+GLOBAL _xadd
 
 GLOBAL getSecond
 GLOBAL getMinute
@@ -135,12 +135,12 @@ _xchg:
 
 ; void* _initialize_stack_frame(void (*entry)(void*, void*), void *func, void *stack_end, void *arg1, void *arg2)
 ; For now, just return an aligned stack pointer. The scheduler/ISR glue is not switching yet.
-_initialize_stack_frame:
+_xadd:
     push rbp
     mov rbp, rsp
-    ; rdx has stack_end
-    mov rax, rdx
-    and rax, -16              ; align to 16 bytes
+    mov rax, rsi
+    lock xadd [rdi], rax
     mov rsp, rbp
     pop rbp
     ret
+
