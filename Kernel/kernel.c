@@ -44,12 +44,16 @@ static void createProcess(MainFunction code,
     (void)sched_register_process(p);
 }
 
-// Idle process: creates shell and halts forever
+// Idle process: crea la shell y hace hlt para siempre
+// preguntar en revision, el problema esta en la shell casi seguro, arranca aca el seguimiento
 static int idle(int argc, char **argv) {
+    // esto es omitible, creo
+    // son expresiones vacias que "consumen" las variables sin hacer nada
     (void)argc; (void)argv;
 
     char *argsShell[2] = {"shell", NULL};
     int16_t fdsShell[3] = {STDIN, STDOUT, STDERR};
+    // le pasa max priority 4 que es mas alta que idle
     createProcess((MainFunction)shellModuleAddress, argsShell, "shell", 4, fdsShell, 1);
 
     while (1) { _hlt(); }

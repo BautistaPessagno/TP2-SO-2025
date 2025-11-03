@@ -2,6 +2,9 @@
 #include "../include/memory_manager.h"
 #include <stdint.h>
 
+// Extern symbols from linker script
+extern uint8_t endOfKernel;
+
 // Estado interno (singleton)
 static Header base;                 // ancla de la free-list (lista circular)
 static MemoryManagerADT mm = 0;     // manager en dirección fija
@@ -66,14 +69,26 @@ static void insert_and_coalesce(Header *bp) {
 MemoryManagerADT create_memory_manager(/* void* const restrict managed_memory, */ uint64_t memory_amount /* reservado */) {
     (void)memory_amount;
 
-    // Construir el objeto en la dirección fija
-    mm = (MemoryManagerADT)MEMORY_MANAGER_FIRST_ADDRESS;
+    // Compute manager address dynamically: place it after kernel + stack region
+    // Stack is at endOfKernel + 32KB (PageSize * 8), so place manager after that
+    // Use 4KB alignment to be safe (page boundary)
+    const uintptr_t page_size = 0x1000;
+    const uintptr_t stack_size = page_size * 8; // 32KB stack
+    uintptr_t kernel_end = (uintptr_t)&endOfKernel;
+    // Place manager after stack region (endOfKernel + 32KB + 4KB padding)
+    uintptr_t manager_begin = align_up_uintptr(kernel_end + stack_size + page_size, page_size);
+    
+    // Construir el objeto en la dirección calculada (después del kernel)
+    mm = (MemoryManagerADT)manager_begin;
 
     // Calcular límites del pool administrado
-    uintptr_t manager_begin = (uintptr_t)MEMORY_MANAGER_FIRST_ADDRESS;
+    // Pool starts after manager + its size, aligned to Header boundary
     uintptr_t manager_end   = manager_begin + (uintptr_t)sizeof(*mm);
     uintptr_t aligned_pool_start = align_up_uintptr(manager_end, sizeof(Header));
-    uintptr_t pool_end_uint      = (uintptr_t)MEMORY_MANAGER_LAST_ADDRESS; // exclusivo
+    
+    // Pool ends before first user module (shell at 0x400000)
+    // Leave some margin: pool ends at 0x300000 (3MB) to be safe
+    uintptr_t pool_end_uint = 0x300000; // exclusivo, antes de shell en 0x400000
 
     mm->pool_start    = (uint8_t *)aligned_pool_start;
     mm->pool_end      = (uint8_t *)pool_end_uint;
