@@ -8,6 +8,7 @@
 #include <linkedListADT.h>
 #include <processes.h>
 #include <scheduler.h>
+#include <lib.h>  // Para strlen
 
 // Estructura interna del scheduler
 typedef struct Scheduler {
@@ -263,6 +264,30 @@ uint16_t sched_getpid(void) {
     return scheduler->currentPid;
 }
 
+// Obtener proceso actual
+Process *sched_get_current_process(void) {
+    if (scheduler == NULL || scheduler->currentPid == 0) {
+        return NULL;
+    }
+    
+    Node *node = scheduler->index[scheduler->currentPid];
+    if (node == NULL) {
+        return NULL;
+    }
+    
+    return (Process*)node->data;
+}
+
+// Obtener proceso por PID
+Process *sched_get_process_by_pid(uint16_t pid) {
+    if (scheduler == NULL || pid >= SCHED_MAX_PROCS || scheduler->index[pid] == NULL) {
+        return NULL;
+    }
+    
+    Node *node = scheduler->index[pid];
+    return (Process*)node->data;
+}
+
 // Forzar fin de quantum
 void sched_yield(void) {
     if (scheduler == NULL) {
@@ -298,9 +323,33 @@ int sched_kill_process(uint16_t pid, int32_t ret) {
     // Cerrar file descriptors
     closeFileDescriptors(p);
     
+    // Agregar a la lista de zombies del padre
+    if (p->parentPid != 0 && p->parentPid < SCHED_MAX_PROCS) {
+        Node *parentNode = scheduler->index[p->parentPid];
+        if (parentNode != NULL) {
+            Process *parent = (Process*)parentNode->data;
+            if (parent != NULL && parent->zombieChildren != NULL) {
+                LinkedListADT zombieList = (LinkedListADT)parent->zombieChildren;
+                appendElement(zombieList, p);
+            }
+        }
+    }
+    
     // Si era el proceso actual, forzar cambio
     if (pid == scheduler->currentPid) {
         sched_yield();
+    }
+    
+    // Despertar al padre si estaba esperando
+    if (p->parentPid != 0 && p->parentPid < SCHED_MAX_PROCS) {
+        Node *parentNode = scheduler->index[p->parentPid];
+        if (parentNode != NULL) {
+            Process *parent = (Process*)parentNode->data;
+            if (parent != NULL && parent->state == BLOCKED && 
+                parent->waitingForPid == pid) {
+                sched_set_status(p->parentPid, READY);
+            }
+        }
     }
     
     return 0;

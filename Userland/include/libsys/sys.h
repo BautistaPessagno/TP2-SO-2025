@@ -118,4 +118,9 @@ void sleep(uint32_t milliseconds);
 int32_t getRegisterSnapshot(int64_t * registers);
 int32_t getCharacterWithoutDisplay(void);
 
+// Process management functions
+int64_t getpid(void);
+int64_t createProcess(char *name, uint64_t argc, char *argv[]);
+int64_t wait(int64_t pid);
+
 #endif

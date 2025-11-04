@@ -29,6 +29,10 @@ GLOBAL sys_get_register_snapshot
 
 GLOBAL sys_get_character_without_display
 
+GLOBAL my_getpid
+GLOBAL my_create_process
+GLOBAL my_wait
+
 section .text
 
 %macro sys_int80 1
@@ -76,3 +80,8 @@ sys_sleep_milis: sys_int80 0x800000D0
 sys_get_register_snapshot: sys_int80 0x800000E0
 
 sys_get_character_without_display: sys_int80 0x800000F0
+
+; Process management syscalls
+my_getpid: sys_int80 0x80000100
+my_create_process: sys_int80 0x80000101
+my_wait: sys_int80 0x80000102

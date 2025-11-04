@@ -28,7 +28,33 @@ static void * const snakeModuleAddress = (void *)0x500000;
 
 typedef int (*EntryPoint)();
 
-static uint16_t next_pid = 1;
+// Tabla de módulos para buscar por nombre
+typedef struct {
+    const char *name;
+    MainFunction address;
+} ModuleEntry;
+
+static ModuleEntry modules[] = {
+    {"shell", (MainFunction)shellModuleAddress},
+    {"snake", (MainFunction)snakeModuleAddress},
+    {NULL, NULL}  // Terminador
+};
+
+// Buscar módulo por nombre (para syscalls)
+MainFunction findModuleByName(const char *name) {
+    if (name == NULL) {
+        return NULL;
+    }
+    
+    for (int i = 0; modules[i].name != NULL; i++) {
+        if (strcmp(modules[i].name, name) == 0) {
+            return modules[i].address;
+        }
+    }
+    return NULL;
+}
+
+uint16_t next_pid = 1;  // Contador global de PIDs (exportado para syscalls)
 
 static void createProcess(MainFunction code,
                           char **args,

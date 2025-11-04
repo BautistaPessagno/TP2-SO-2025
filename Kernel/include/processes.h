@@ -79,4 +79,10 @@ int getZombiesSnapshots(int idx, ProcessSnapshot arr[], Process *proc);
 // Carga un snapshot de un proceso
 ProcessSnapshot * loadSnapshot(ProcessSnapshot *dst, const Process *src);
 
+// Buscar módulo por nombre (implementado en kernel.c)
+MainFunction findModuleByName(const char *name);
+
+// Contador global de PIDs (exportado desde kernel.c)
+extern uint16_t next_pid;
+
 #endif

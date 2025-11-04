@@ -83,3 +83,16 @@ int32_t getRegisterSnapshot(int64_t * registers) {
 int32_t getCharacterWithoutDisplay(void) {
     return sys_get_character_without_display();
 }
+
+// Process management functions
+int64_t getpid(void) {
+    return my_getpid();
+}
+
+int64_t createProcess(char *name, uint64_t argc, char *argv[]) {
+    return my_create_process(name, argc, argv);
+}
+
+int64_t wait(int64_t pid) {
+    return my_wait(pid);
+}

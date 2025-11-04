@@ -2,7 +2,7 @@
 
 ## Urgent
 
-- [ ] Que se muestre la Shell
+- [FUNCIONA BROOOOO] Que se muestre la Shell
 
 ## Memory Manager
 

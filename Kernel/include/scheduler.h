@@ -34,6 +34,8 @@ void *schedule(void *prev_sp);
 // Syscalls/helpers usados por userland o kernel
 uint16_t sched_getpid(void);
 void sched_yield(void);
+Process *sched_get_current_process(void);
+Process *sched_get_process_by_pid(uint16_t pid);
 int sched_kill_process(uint16_t pid, int32_t ret);
 int sched_kill_current(int32_t ret);
 
