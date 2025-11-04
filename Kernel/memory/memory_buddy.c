@@ -6,6 +6,7 @@
 static Header base;                 // ancla de la free-list (lista circular)
 static MemoryManagerADT mm = 0;     // manager en dirección fija
 
+extern uint8_t endOfKernel;
 
 static uintptr_t align_up_uintptr(uintptr_t p, size_t a) {
     const uintptr_t mask = (uintptr_t)(a - 1);
@@ -86,18 +87,27 @@ void splitHeader(Header *header) {
 MemoryManagerADT create_memory_manager(/* void* const restrict managed_memory, */ uint64_t memory_amount /* reservado */) {
     (void)memory_amount;
 
+    const uintptr_t page_size = 0x1000;
+    const uintptr_t stack_size = page_size * 8; // 32KB stack
+    uintptr_t kernel_end = (uintptr_t)&endOfKernel;
+    // Place manager after stack region (endOfKernel + 32KB + 4KB padding)
+
+
     // Construir el objeto en la dirección fija
-    mm = (MemoryManagerADT)MEMORY_MANAGER_FIRST_ADDRESS;
+
 
     // Calcular límites del pool administrado
-    uintptr_t manager_begin      = (uintptr_t)MEMORY_MANAGER_FIRST_ADDRESS;
+    uintptr_t manager_begin = align_up_uintptr(kernel_end + stack_size + page_size, page_size);
     uintptr_t manager_end        = manager_begin + (uintptr_t)sizeof(*mm);
     uintptr_t aligned_pool_start = align_up_uintptr(manager_end, sizeof(Header));
     uintptr_t pool_end_uint      = (uintptr_t)MEMORY_MANAGER_LAST_ADDRESS; // exclusivo
 
+    mm = (MemoryManagerADT)manager_begin;
+
     mm->pool_start    = (uint8_t *)aligned_pool_start;
     mm->pool_end      = (uint8_t *)pool_end_uint;
     mm->memory_amount = (uint64_t)(pool_end_uint - aligned_pool_start); //Cantidad de bytes de la memoria.
+    mm->allocated_bytes = 0;
 
     // en este punto tengo 3*2ˆ20 bytes de memoria. como quiero potencia de 2, uso 2ˆ21
     int dif =  mm->memory_amount - power(2, 21);
@@ -204,6 +214,9 @@ void *mm_malloc(size_t nbytes) {
         p = findBlock(prevp, bytes_required); // itera toda la lista cuando ya  se sabe que solo pueden ser los primeros dos :(
     }
 
+    // Contabilizar bytes del bloque asignado (bloque buddy completo)
+    mm->allocated_bytes += (uint64_t)p->s.units;
+
     // Return pointer to the payload (after the header)
     return (void *)(p + 1);
 }
@@ -219,8 +232,29 @@ void mm_free(void *ptr) {
         return; // ignorar puntero inválido
     }
 
+    // Descontar bytes del bloque liberado
+    uint64_t bytes = (uint64_t)bp->s.units;
+    if (mm->allocated_bytes >= bytes) {
+        mm->allocated_bytes -= bytes;
+    } else {
+        mm->allocated_bytes = 0; // clamp defensivo
+    }
+
     insert(bp);
     while (coalesce());
+}
+
+MMState mm_state(void) {
+    MMState st = (MMState){0, 0, 0};
+    if (mm == 0) {
+        return st;
+    }
+    st.total = mm->memory_amount;
+    st.allocated = mm->allocated_bytes;
+    st.available = (mm->memory_amount >= mm->allocated_bytes)
+        ? (mm->memory_amount - mm->allocated_bytes)
+        : 0;
+    return st;
 }
 
 

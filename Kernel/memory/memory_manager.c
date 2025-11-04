@@ -88,11 +88,12 @@ MemoryManagerADT create_memory_manager(/* void* const restrict managed_memory, *
     
     // Pool ends before first user module (shell at 0x400000)
     // Leave some margin: pool ends at 0x300000 (3MB) to be safe
-    uintptr_t pool_end_uint = 0x300000; // exclusivo, antes de shell en 0x400000
+    uintptr_t pool_end_uint = (uintptr_t)MEMORY_MANAGER_LAST_ADDRESS; // exclusivo, antes de shell en 0x400000
 
-    mm->pool_start    = (uint8_t *)aligned_pool_start;
-    mm->pool_end      = (uint8_t *)pool_end_uint;
-    mm->memory_amount = (uint64_t)(pool_end_uint - aligned_pool_start);
+	mm->pool_start    = (uint8_t *)aligned_pool_start;
+	mm->pool_end      = (uint8_t *)pool_end_uint;
+	mm->memory_amount = (uint64_t)(pool_end_uint - aligned_pool_start);
+	mm->allocated_bytes = 0;
 
     // Inicializar free-list (circular, ancla base)
     base.s.next = &base;
@@ -136,6 +137,8 @@ void *mm_malloc(size_t nbytes) {
                 p->s.units = nunits;
             }
             mm->free = prevp;
+			// Contabilizar bytes asignados (incluye header).
+			mm->allocated_bytes += (uint64_t)(nunits * sizeof(Header));
             return (void *)(p + 1);
         }
         if (p == mm->free) {
@@ -159,7 +162,15 @@ void mm_free(void *ptr) {
 // is coalesced with it into a single bigger block, so storage does not become too fragmented. Determining the adjacency is easy because the free list is maintained in
 // order of decreasing address. 
 
-    Header *bp = (Header *)ptr - 1; 
+	Header *bp = (Header *)ptr - 1; 
+
+	// Descontar bytes asignados por este bloque (incluye header)
+	uint64_t bytes = (uint64_t)(bp->s.units * sizeof(Header));
+	if (mm->allocated_bytes >= bytes) {
+		mm->allocated_bytes -= bytes;
+	} else {
+		mm->allocated_bytes = 0; // clamp defensivo
+	}
 
     // Validar que el header cae dentro del pool
     if ((uint8_t *)bp < mm->pool_start || (uint8_t *)bp >= mm->pool_end) {
@@ -169,3 +180,16 @@ void mm_free(void *ptr) {
     insert_and_coalesce(bp);
 }
 
+
+MMState mm_state(void) {
+	MMState st = {0, 0, 0};
+	if (mm == 0) {
+		return st;
+	}
+	st.total = mm->memory_amount;
+	st.allocated = mm->allocated_bytes;
+	st.available = (mm->memory_amount >= mm->allocated_bytes)
+		? (mm->memory_amount - mm->allocated_bytes)
+		: 0;
+	return st;
+}

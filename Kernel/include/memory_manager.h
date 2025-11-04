@@ -8,6 +8,8 @@
 #define MEMORY_MANAGER_FIRST_ADDRESS 0x0000000000100000ULL
 #define MEMORY_MANAGER_LAST_ADDRESS  0x00000000003FFFFFULL 
 
+
+
 typedef long Align;
 
 typedef union Header {
@@ -23,11 +25,19 @@ typedef struct MemoryManagerCDT {
     uint8_t *pool_start;      // inicio del pool administrado
     uint8_t *pool_end;        // fin EXCLUSIVO del pool
     uint64_t memory_amount;   // bytes del pool
+    uint64_t allocated_bytes; // bytes actualmente asignados (incluye overhead de Header)
 } *MemoryManagerADT;
+
+typedef struct {
+    uint64_t total;       // bytes totales administrados por el manager
+    uint64_t allocated;   // bytes asignados (incluye headers)
+    uint64_t available;   // bytes disponibles = total - asignados
+} MMState;
 
 //en nuestrop SO, em memory amount va a ser MEMORY_MANAGER_LAST_ADDRESS - MEMORY_MANAGER_FIRST_ADDRESS
 MemoryManagerADT create_memory_manager(/* void* const restrict managed_memory, */ uint64_t memory_amount /* reservado para futuro */);
 void *mm_malloc(size_t nbytes);
 void  mm_free(void *ptr);
+MMState mm_state(void);
 
 #endif
