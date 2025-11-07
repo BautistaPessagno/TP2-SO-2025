@@ -151,3 +151,12 @@ static int down(Semaphore *sem) {
 
 	return 0;
 }
+
+int8_t semDestroy(uint16_t id) {
+	SemaphoreManagerADT semManager = getSemaphoreManager();
+	if (semManager->semaphores[id] == NULL)
+		return -1;
+	freeSemaphore(semManager->semaphores[id]);
+	semManager->semaphores[id] = NULL;
+	return 0;
+}

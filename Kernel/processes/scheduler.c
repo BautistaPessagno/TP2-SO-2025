@@ -8,6 +8,7 @@
 #include <linkedListADT.h>
 #include <processes.h>
 #include <scheduler.h>
+#include <lib.h>  // Para strlen
 
 // Estructura interna del scheduler
 typedef struct Scheduler {
@@ -17,8 +18,12 @@ typedef struct Scheduler {
     uint16_t currentPid;
     uint32_t quantumTicks;
     uint32_t remainingTicks;
+    uint16_t nextUnusedPid;
+    uint16_t qtyProcesses;
 } Scheduler;
 
+#define MAX_PROCESSES 1 << 12
+#define IDLE_PID 0
 // Variables globales
 static Scheduler *scheduler = NULL;
 static uint8_t kill_foreground_flag = 0;
@@ -205,8 +210,17 @@ void *schedule(void *prev_sp) {
         if (currentNode != NULL) {
             Process *currentProc = (Process*)currentNode->data;
             if (currentProc != NULL && currentProc->state == RUNNING) {
+                // Save context of the preempted task
                 currentProc->stackPos = prev_sp;
                 currentProc->state = READY;
+
+                // Demote priority by one level (min 0), like the reference implementation
+                uint8_t newPrio = (currentProc->priority > 0) ? (currentProc->priority - 1) : currentProc->priority;
+                if (newPrio != currentProc->priority) {
+                    // Requeue in the new priority queue
+                    remove_node(scheduler->ready[currentProc->priority], currentNode);
+                    currentProc->priority = newPrio;
+                }
                 push_back(scheduler->ready[currentProc->priority], currentNode);
             }
         }
@@ -249,7 +263,9 @@ void *schedule(void *prev_sp) {
     // Configurar proceso entrante
     scheduler->currentPid = nextProc->pid;
     nextProc->state = RUNNING;
-    scheduler->remainingTicks = scheduler->quantumTicks;
+    // Set quantum length based on priority like the reference (higher priority -> longer quantum)
+    // MAX_PRIORITY is defined in processes.h
+    scheduler->remainingTicks = (MAX_PRIORITY > nextProc->priority) ? (MAX_PRIORITY - nextProc->priority) : 1;
     
     // Si no hay stackPos válido, conservar contexto actual
     return nextProc->stackPos != NULL ? nextProc->stackPos : prev_sp;
@@ -263,12 +279,64 @@ uint16_t sched_getpid(void) {
     return scheduler->currentPid;
 }
 
+// Obtener proceso actual
+Process *sched_get_current_process(void) {
+    if (scheduler == NULL || scheduler->currentPid == 0) {
+        return NULL;
+    }
+    
+    Node *node = scheduler->index[scheduler->currentPid];
+    if (node == NULL) {
+        return NULL;
+    }
+    
+    return (Process*)node->data;
+}
+
+// Obtener proceso por PID
+Process *sched_get_process_by_pid(uint16_t pid) {
+    if (scheduler == NULL || pid >= SCHED_MAX_PROCS || scheduler->index[pid] == NULL) {
+        return NULL;
+    }
+    
+    Node *node = scheduler->index[pid];
+    return (Process*)node->data;
+}
+
 // Forzar fin de quantum
 void sched_yield(void) {
     if (scheduler == NULL) {
         return;
     }
     scheduler->remainingTicks = 0;
+}
+
+static void destroyZombie(Scheduler *scheduler, Process *zombie) {
+	Node *zombieNode = scheduler->index[zombie->pid];
+	scheduler->qtyProcesses--;
+	scheduler->index[zombie->pid] = NULL;
+	freeProcess(zombie);
+	freeLinkedListADTDeep(zombieNode);
+}
+
+int32_t waitpid(uint16_t pid) {
+	Scheduler *scheduler = (Scheduler *)sched_get();
+	Node *zombieNode = scheduler->index[pid];
+	if (zombieNode == NULL)
+		return -1;
+	Process *zombieProcess = (Process *) zombieNode->data;
+	if (zombieProcess->parentPid != scheduler->currentPid)
+		return -1;
+
+	Process *parent = (Process *) scheduler->index[scheduler->currentPid]->data;
+	parent->waitingForPid = pid;
+	if (zombieProcess->state != ZOMBIE) {
+		sched_set_status(parent->pid, BLOCKED);
+		sched_yield();
+	}
+	removeNode((LinkedListADT)parent->zombieChildren, zombieNode);
+	destroyZombie(scheduler, zombieProcess);
+	return zombieProcess->retValue;
 }
 
 // Matar proceso específico
@@ -298,13 +366,39 @@ int sched_kill_process(uint16_t pid, int32_t ret) {
     // Cerrar file descriptors
     closeFileDescriptors(p);
     
+    // Agregar a la lista de zombies del padre
+    if (p->parentPid != 0 && p->parentPid < SCHED_MAX_PROCS) {
+        Node *parentNode = scheduler->index[p->parentPid];
+        if (parentNode != NULL) {
+            Process *parent = (Process*)parentNode->data;
+            if (parent != NULL && parent->zombieChildren != NULL) {
+                LinkedListADT zombieList = (LinkedListADT)parent->zombieChildren;
+                appendElement(zombieList, p);
+            }
+        }
+    }
+    
     // Si era el proceso actual, forzar cambio
     if (pid == scheduler->currentPid) {
         sched_yield();
     }
     
+    // Despertar al padre si estaba esperando
+    if (p->parentPid != 0 && p->parentPid < SCHED_MAX_PROCS) {
+        Node *parentNode = scheduler->index[p->parentPid];
+        if (parentNode != NULL) {
+            Process *parent = (Process*)parentNode->data;
+            if (parent != NULL && parent->state == BLOCKED && 
+                parent->waitingForPid == pid) {
+                sched_set_status(p->parentPid, READY);
+            }
+        }
+    }
+    
     return 0;
 }
+
+
 
 // Matar proceso actual
 int sched_kill_current(int32_t ret) {
@@ -362,39 +456,3 @@ void *sched_tick_isr(void *current_sp) {
     // Fin de quantum: delegar en schedule y retornar el nuevo SP
     return schedule(current_sp);
 }
-
-#if 0
-// Tests no ejecutables para verificar funcionalidad
-static void test_scheduler_basic(void) {
-    // Crear 3 procesos con prioridades (2,2,4)
-    Process proc1, proc2, proc3;
-    
-    // Inicializar procesos
-    initProcess(&proc1, 1, 0, (MainFunction)0x1000, NULL, "proc1", 2, NULL, 0);
-    initProcess(&proc2, 2, 0, (MainFunction)0x2000, NULL, "proc2", 2, NULL, 0);
-    initProcess(&proc3, 3, 0, (MainFunction)0x3000, NULL, "proc3", 4, NULL, 0);
-    
-    // Registrar en scheduler
-    sched_register_process(&proc1);
-    sched_register_process(&proc2);
-    sched_register_process(&proc3);
-    
-    // Verificar que proc3 (prio 4) corre más frecuentemente
-    // cuando las colas 4 y 2 compiten
-    
-    // Test block/unblock
-    sched_set_status(2, PROC_BLOCKED); // Bloquear proc2
-    // El siguiente pick no debe considerar proc2 hasta que esté READY
-    
-    // Test yield
-    sched_yield(); // Fuerza rotación RR dentro de la misma cola
-    
-    // Test kill_current
-    sched_kill_current(42); // Mata proceso actual y replanifica
-    
-    // Limpiar
-    freeProcess(&proc1);
-    freeProcess(&proc2);
-    freeProcess(&proc3);
-}
-#endif

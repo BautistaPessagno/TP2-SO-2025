@@ -55,4 +55,9 @@ static inline void yield(void) { sched_yield(); }
 static inline int setStatus(uint16_t pid, ProcessState st) { return sched_set_status(pid, st); }
 static inline int processIsAlive(uint16_t pid) { (void)pid; return 1; }
 
+// Waiting on a child process to exit (compat API used by syscalls)
+int32_t waitpid(uint16_t pid);
+Process *sched_get_current_process(void);
+Process *sched_get_process_by_pid(uint16_t pid);
+
 #endif

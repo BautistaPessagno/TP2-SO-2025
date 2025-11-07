@@ -79,4 +79,11 @@ int getZombiesSnapshots(int idx, ProcessSnapshot arr[], Process *proc);
 // Carga un snapshot de un proceso
 ProcessSnapshot * loadSnapshot(ProcessSnapshot *dst, const Process *src);
 
+uint16_t createProcess(MainFunction code,
+    char **args,
+    const char *name,
+    uint8_t priority,
+    const int16_t fileDescriptors[3],
+    uint8_t unkillable);
+
 #endif

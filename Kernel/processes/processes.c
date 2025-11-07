@@ -11,6 +11,8 @@
 #include <scheduler.h>
 #include <interrupts.h>
 
+static uint16_t next_pid = 1;
+
 static int count_args(char **argv) {
     if (argv == NULL) {
         return 0;
@@ -129,6 +131,21 @@ void initProcess(Process *p,
     
     p->stackPos = _initialize_stack_frame(processWrapper, (void*)code, stack_end, (void*)code, (void*)p->argv);
 }
+
+uint16_t createProcess(MainFunction code,
+    char **args,
+    const char *name,
+    uint8_t priority,
+    const int16_t fileDescriptors[3],
+    uint8_t unkillable) {
+Process *p = (Process*)mm_malloc(sizeof(Process));
+if (p == 0) return;
+uint16_t parent = sched_getpid(); // 0 if none yet
+uint16_t pid = next_pid++;
+initProcess(p, pid, parent, code, args, name, priority, fileDescriptors, unkillable);
+(void)sched_register_process(p);
+}
+
 
 void processWrapper(void *fn, void *argv_ptr) {
     MainFunction code = (MainFunction)fn;

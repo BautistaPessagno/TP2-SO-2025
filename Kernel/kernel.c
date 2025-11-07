@@ -28,21 +28,8 @@ static void * const snakeModuleAddress = (void *)0x500000;
 
 typedef int (*EntryPoint)();
 
-static uint16_t next_pid = 1;
 
-static void createProcess(MainFunction code,
-                          char **args,
-                          const char *name,
-                          uint8_t priority,
-                          const int16_t fileDescriptors[3],
-                          uint8_t unkillable) {
-    Process *p = (Process*)mm_malloc(sizeof(Process));
-    if (p == 0) return;
-    uint16_t parent = sched_getpid(); // 0 if none yet
-    uint16_t pid = next_pid++;
-    initProcess(p, pid, parent, code, args, name, priority, fileDescriptors, unkillable);
-    (void)sched_register_process(p);
-}
+
 
 // Idle process: crea la shell y hace hlt para siempre
 // preguntar en revision, el problema esta en la shell casi seguro, arranca aca el seguimiento
@@ -99,7 +86,6 @@ int main(){
     // Create idle process (which will spawn shell)
     char *argsIdle[3] = {"idle", "Hm?", NULL};
     int16_t fdIdle[3] = {STDIN, STDOUT, STDERR};
-    next_pid = 1; // ensure PID 1 for idle
     createProcess((MainFunction)&idle, argsIdle, "idle", 1, fdIdle, 1);
 
     load_idt();
