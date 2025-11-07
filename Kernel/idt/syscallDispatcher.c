@@ -6,7 +6,6 @@
 #include <lib.h>
 #include <video.h>
 #include <time.h>
-#include <syscall.h>
 
 extern int64_t register_snapshot[18];
 extern int64_t register_snapshot_taken;
@@ -52,11 +51,6 @@ int32_t syscallDispatcher(Registers * registers) {
 		case 0x800000E0: return sys_get_register_snapshot((int64_t *) registers->rdi);
 
 		case 0x800000F0: return sys_get_character_without_display();
-		
-		// Process management syscalls
-		case 0x80000100: return (int32_t)my_getpid();
-		case 0x80000101: return (int32_t)my_create_process((char *)registers->rdi, (uint64_t)registers->rsi, (char **)registers->rdx);
-		case 0x80000102: return (int32_t)my_wait((int64_t)registers->rdi);
 		
 		default:
             return 0;

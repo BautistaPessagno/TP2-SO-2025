@@ -56,12 +56,4 @@ int32_t sys_get_register_snapshot(int64_t * registers);
 
 int32_t sys_get_character_without_display(void);
 
-// Process management syscalls
-/* 0x80000100 */
-int64_t my_getpid(void);
-/* 0x80000101 */
-int64_t my_create_process(char *name, uint64_t argc, char *argv[]);
-/* 0x80000102 */
-int64_t my_wait(int64_t pid);
-
 #endif

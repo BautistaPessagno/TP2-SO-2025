@@ -96,53 +96,27 @@ int main() {
         buffer[buffer_dim] = 0;
         
         char * command = strtok(buffer, " ");
-        
-        if (command == NULL) {
-            printf("\n");
-            buffer[0] = buffer_dim = 0;
-            continue;
-        }
-        
-        // Parsear argumentos
-        char *args[64];  // Máximo 64 argumentos
-        int argc = 0;
-        args[argc++] = command;  // argv[0] es el nombre del comando
-        
-        char *token = strtok(NULL, " ");
-        while (token != NULL && argc < 64) {
-            args[argc++] = token;
-            token = strtok(NULL, " ");
-        }
-        args[argc] = NULL;  // Terminador NULL
-        
-        // Intentar ejecutar como proceso primero
-        int64_t pid = createProcess(command, argc, args);
-        
-        if (pid >= 0) {
-            // Proceso creado exitosamente, esperar a que termine
-            int64_t ret = wait(pid);
-            last_command_output = ret;
-        } else {
-            // Fallback: ejecutar como función directa (comandos internos)
-            int i = 0;
-            for (; i < sizeof(commands) / sizeof(Command); i++) {
-                if (strcmp(commands[i].name, command) == 0) {
-                    last_command_output = commands[i].function();
-                    break;
-                }
+        int i = 0;
+
+        for (; i < sizeof(commands) / sizeof(Command); i++) {
+            if (strcmp(commands[i].name, command) == 0) {
+                last_command_output = commands[i].function();
+                strncpy(command_history[command_history_last], command_history_buffer, 255);
+                command_history[command_history_last][buffer_dim] = '\0';
+                INC_MOD(command_history_last, HISTORY_SIZE);
+                last_command_arrowed = command_history_last;
+                break;
             }
-            
-            // Si el comando no se encontró ni como proceso ni como función
-            if (i == sizeof(commands) / sizeof(Command)) {
+        }
+
+        // If the command is not found, ignore \n
+        if ( i == sizeof(commands) / sizeof(Command) ) {
+            if (command != NULL && *command != '\0') {
                 fprintf(FD_STDERR, "\e[0;33mCommand not found:\e[0m %s\n", command);
+            } else if (command == NULL) {
+                printf("\n");
             }
         }
-        
-        // Guardar en historial
-        strncpy(command_history[command_history_last], command_history_buffer, 255);
-        command_history[command_history_last][buffer_dim] = '\0';
-        INC_MOD(command_history_last, HISTORY_SIZE);
-        last_command_arrowed = command_history_last;
     
         buffer[0] = buffer_dim = 0;
     }

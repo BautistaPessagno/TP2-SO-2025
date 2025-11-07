@@ -10,18 +10,6 @@ size_t strlen(const char * s)
     return n;
 }
 
-int strcmp(const char *a, const char *b)
-{
-    if (a == 0 && b == 0) return 0;
-    if (a == 0) return -1;
-    if (b == 0) return 1;
-    while (*a != 0 && *b != 0 && *a == *b) {
-        a++;
-        b++;
-    }
-    return (unsigned char)*a - (unsigned char)*b;
-}
-
 void * memset(void * destination, int32_t c, uint64_t length)
 {
 	uint8_t chr = (uint8_t)c;
