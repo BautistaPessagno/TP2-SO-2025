@@ -135,3 +135,20 @@ int cmd_filter(int argc, char **argv) {
 	putchar('\n');
 	return 0;
 }
+
+// Simple foreground process to test Ctrl+C kill
+int cmd_fgtest(int argc, char **argv) {
+	int periodMs = 500;
+	if (argc > 1) {
+		sscanf(argv[1], "%d", &periodMs);
+		if (periodMs <= 0) periodMs = 500;
+	}
+	int pid = getpid();
+	printf("[fgtest pid=%d] started, press Ctrl+C to kill me\n", pid);
+	while (1) {
+		printf("[fgtest pid=%d] alive\n", pid);
+		sleep((uint32_t)periodMs);
+		yield();
+	}
+	return 0;
+}

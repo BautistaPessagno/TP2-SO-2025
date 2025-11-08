@@ -3,6 +3,7 @@
 #include <interrupts.h>
 #include <cursor.h>
 #include <stddef.h>
+#include <scheduler.h>
 
 #define BUFFER_SIZE 1024
 
@@ -257,11 +258,25 @@ uint8_t keyboardHandler(){
     
     if (! (is_pressed && IS_KEYCODE(scancode)) ) return scancode; // ignore break or unsupported scancodes
     
+    // Global Ctrl+C detection (works even when no stdin read is in progress)
+    if (CONTROL_KEY_PRESSED && is_pressed && makeCode(scancode) == 0x2E) { // scancode 0x2E == 'c'/'C'
+        to_read = to_write = 0;         // flush input buffer
+        killForegroundProcess();        // request scheduler to kill fg process
+        print("CTRL+C pressed\n");
+        return scancode;
+    }
+    
     if ((keyboard_options & MODIFY_BUFFER) != 0) {
         int8_t c = scancodeMap[scancode][SHIFT_KEY_PRESSED];
 
         if (CAPS_LOCK_KEY_PRESSED == 1) {
             c = TO_UPPER(c);
+        }
+
+        // Detect Ctrl + D: do not buffer or echo, just print a message
+        if (CONTROL_KEY_PRESSED && is_pressed && makeCode(scancode) == 0x20) { // scancode 0x20 == 'd'/'D'
+            print("CTRL+D pressed\n");
+            return scancode;
         }
 
         if (IS_PRINTABLE(scancode)) {

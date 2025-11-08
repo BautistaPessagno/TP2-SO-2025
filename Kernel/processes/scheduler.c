@@ -131,7 +131,9 @@ void *schedule(void *prevStackPointer) {
 	scheduler->currentPid = getNextPid(scheduler);
 	currentProcess = scheduler->processes[scheduler->currentPid]->data;
 
+	
 	if (scheduler->killFgProcess && currentProcess->fileDescriptors[STDIN] == STDIN) {
+		print("Killing foreground process\n");
 		scheduler->killFgProcess = 0;
 		if (killCurrentProcess(-1) != -1)
 			forceTimerTick();
