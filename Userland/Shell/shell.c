@@ -49,7 +49,6 @@ int cmd_block(int argc, char **argv);
 int cmd_cat(int argc, char **argv);
 int cmd_wc(int argc, char **argv);
 int cmd_filter(int argc, char **argv);
-int cmd_fgtest(int argc, char **argv);
 
 
 // External commands implemented in Tests/
@@ -122,9 +121,6 @@ Command commands[] = {
     {.name = "loop",
      .function = cmd_loop,
      .description = "Prints its pid periodically (usage: loop [periodMs])"},
-    {.name = "fgtest",
-     .function = cmd_fgtest,
-     .description = "Foreground test process (usage: fgtest [periodMs])"},
     {.name = "kill",
      .function = cmd_kill,
      .description = "Kills a process by pid (usage: kill [pid])"},
