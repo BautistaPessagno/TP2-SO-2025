@@ -46,7 +46,11 @@ int32_t createProcessWithFds(int (*code)(int, char **), char **args, const char 
 }
 
 int32_t killProcess(uint16_t pid) {
-    return sys_kill_proc(pid);
+    int32_t result = sys_kill_proc(pid);
+    // Wait for the process to be killed
+    waitpid(pid);
+    return result;
+
 }
 
 int32_t nice(uint16_t pid, uint8_t priority) {

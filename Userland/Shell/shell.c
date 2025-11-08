@@ -54,6 +54,8 @@ int cmd_filter(int argc, char **argv);
 // External commands implemented in Tests/
 int test_mm(int argc, char **argv);
 int test_processes(int argc, char **argv);
+int test_sync(int argc, char **argv);
+int test_prio(int argc, char **argv);
 
 static void printPreviousCommand(enum REGISTERABLE_KEYS scancode);
 static void printNextCommand(enum REGISTERABLE_KEYS scancode);
@@ -90,10 +92,16 @@ Command commands[] = {
      .description = "Prints the available commands"},
     {.name = "test_mm",
      .function = test_mm,
-     .description = "Runs the memory test"},
+     .description = "Runs the memory test. Usage: test_mm [max_memory]"},
     {.name = "test_processes",
      .function = test_processes,
-     .description = "Runs the processes test"},
+     .description = "Runs the processes test. Usage: test_processes [max_processes]"},
+    {.name = "test_sync",
+     .function = test_sync,
+     .description = "Runs the sync test. Usage: test_sync [n] [use_sem]"},
+    {.name = "test_prio",
+     .function = test_prio,
+     .description = "Runs the priority test. Usage: test_prio [max_value] [max_prio (optional)]"},
     {.name = "history",
      .function = cmd_history,
      .description = "Prints the command history"},
@@ -186,14 +194,21 @@ int main() {
     }
     argv[argc] = NULL;
 
+    if (argc == 0) {
+      printf("\n");
+      buffer[0] = buffer_dim = 0;
+      continue;
+    }
+
     char *command = argv[0];
+    char **command_args = argc > 1 ? &argv[1] : NULL;
     int i = 0;
 
     for (; i < sizeof(commands) / sizeof(Command); i++) {
       if (strcmp(commands[i].name, command) == 0) {
         // Run the command as a separate process
         int16_t fds[3] = {STDIN, STDOUT, STDERR};
-        int32_t pid = createProcessWithFds(commands[i].function, argv, commands[i].name, DEFAULT_PRIORITY, fds);
+        int32_t pid = createProcessWithFds(commands[i].function, command_args, commands[i].name, DEFAULT_PRIORITY, fds);
         if (pid >= 0) {
           last_command_output = waitpid(pid);
         } else {
@@ -261,7 +276,7 @@ static int cmd_time(int argc, char **argv) {
 }
 
 static int cmd_echo(int argc, char **argv) {
-  for (int i = 1; i < argc; i++) {
+  for (int i = 0; i < argc; i++) {
     printf("%s", argv[i]);
     if (i + 1 < argc) printf(" ");
   }
@@ -286,20 +301,20 @@ static int cmd_clear(int argc, char **argv) {
 
 static int cmd_exit(int argc, char **argv) {
   int aux = 0;
-  if (argc > 1) {
-    sscanf(argv[1], "%d", &aux);
+  if (argc > 0) {
+    sscanf(argv[0], "%d", &aux);
   }
   return aux;
 }
 
 static int cmd_font(int argc, char **argv) {
-  if (argc < 2) {
+  if (argc < 1) {
     perror("Invalid argument\n");
     return 1;
   }
-  if (strcasecmp(argv[1], "increase") == 0) {
+  if (strcasecmp(argv[0], "increase") == 0) {
     return increaseFontSize();
-  } else if (strcasecmp(argv[1], "decrease") == 0) {
+  } else if (strcasecmp(argv[0], "decrease") == 0) {
     return decreaseFontSize();
   }
 
@@ -308,7 +323,7 @@ static int cmd_font(int argc, char **argv) {
 }
 
 static int cmd_man(int argc, char **argv) {
-  char *command = argc > 1 ? argv[1] : NULL;
+  char *command = argc > 0 ? argv[0] : NULL;
 
   if (command == NULL) {
     perror("No argument provided\n");

@@ -24,8 +24,8 @@ int cmd_ps(int argc, char **argv) {
 
 int cmd_loop(int argc, char **argv) {
 	int periodMs = 1000;
-	if (argc > 1) {
-		sscanf(argv[1], "%d", &periodMs);
+	if (argc > 0) {
+		sscanf(argv[0], "%d", &periodMs);
 		if (periodMs <= 0) periodMs = 1000;
 	}
 	int pid = getpid();
@@ -38,12 +38,12 @@ int cmd_loop(int argc, char **argv) {
 }
 
 int cmd_kill(int argc, char **argv) {
-	if (argc < 2) {
+	if (argc < 1) {
 		perror("kill: missing pid\n");
 		return 1;
 	}
 	int pid = -1;
-	sscanf(argv[1], "%d", &pid);
+	sscanf(argv[0], "%d", &pid);
 	int32_t r = killProcess((uint16_t)pid);
 	if (r < 0) {
 		perror("kill: failed\n");
@@ -54,13 +54,13 @@ int cmd_kill(int argc, char **argv) {
 }
 
 int cmd_nice(int argc, char **argv) {
-	if (argc < 3) {
+	if (argc < 2) {
 		perror("nice: usage nice [pid] [priority]\n");
 		return 1;
 	}
 	int pid = -1, prio = -1;
-	sscanf(argv[1], "%d", &pid);
-	sscanf(argv[2], "%d", &prio);
+	sscanf(argv[0], "%d", &pid);
+	sscanf(argv[1], "%d", &prio);
 	if (prio < 0) prio = 0;
 	if (prio > 4) prio = 4;
 	int32_t r = nice((uint16_t)pid, (uint8_t)prio);
@@ -73,12 +73,12 @@ int cmd_nice(int argc, char **argv) {
 }
 
 int cmd_block(int argc, char **argv) {
-	if (argc < 2) {
+	if (argc < 1) {
 		perror("block: missing pid\n");
 		return 1;
 	}
 	int pid = -1;
-	sscanf(argv[1], "%d", &pid);
+	sscanf(argv[0], "%d", &pid);
 	int32_t r = block((uint16_t)pid);
 	if (r < 0) {
 		r = unblock((uint16_t)pid);
