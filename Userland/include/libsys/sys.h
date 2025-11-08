@@ -135,6 +135,10 @@ int32_t semPost(char *sem_id);
 int32_t semClose(char *sem_id);
 int32_t semDestroy(char *sem_id);
 
+// Memory API
+void *malloc(uint64_t size);
+int64_t free(void *ptr);
+
 // Memory/process helpers
 typedef struct {
     uint64_t total;

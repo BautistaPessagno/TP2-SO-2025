@@ -167,3 +167,11 @@ int32_t getMemoryState(MMState *state) {
 int32_t printProcesses(void) {
     return sys_print_ps();
 }
+
+void *malloc(uint64_t size) {
+    return sys_malloc(size);
+}
+
+int64_t free(void *ptr) {
+    return sys_free(ptr);
+}

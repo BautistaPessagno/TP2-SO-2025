@@ -132,6 +132,15 @@ int64_t my_wait(int64_t pid) {
   return waitpid(pid);
 }
 
+void *my_malloc(uint64_t size) {
+    return mm_malloc((size_t)size);
+  }
+  
+int64_t my_free(void *ptr) {
+    mm_free(ptr);
+    return 0;
+}
+
 int64_t my_mm_state(MMState *state) {
   if (state == 0) return -1;
   MMState s = mm_state();

@@ -2,6 +2,10 @@
     "files.associations": {
         "stdlib.h": "c",
         "pipe_manager.h": "c",
-        "sys.h": "c"
+        "sys.h": "c",
+        "stdio.h": "c",
+        "string.h": "c",
+        "stddef.h": "c",
+        "test_mm.h": "c"
     }
 }

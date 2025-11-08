@@ -1,5 +1,5 @@
-#include "syscall.h"
-#include "test_util.h"
+#include <libsys/sys.h>
+#include "tests/test_util.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,19 +11,20 @@ typedef struct MM_rq {
   uint32_t size;
 } mm_rq;
 
-uint64_t test_mm(uint64_t argc, char *argv[]) {
+int test_mm(int argc, char **argv) {
 
   mm_rq mm_rqs[MAX_BLOCKS];
   uint8_t rq;
   uint32_t total;
   uint64_t max_memory;
 
-  if (argc != 1)
+  if (argc < 2)
     return -1;
 
-  if ((max_memory = satoi(argv[0])) <= 0)
+  if ((max_memory = satoi(argv[1])) <= 0)
     return -1;
 
+  int iterations = 0;
   while (1) {
     rq = 0;
     total = 0;
@@ -57,5 +58,11 @@ uint64_t test_mm(uint64_t argc, char *argv[]) {
     for (i = 0; i < rq; i++)
       if (mm_rqs[i].address)
         free(mm_rqs[i].address);
+    
+    if (iterations % 100000 == 0) {
+      printf("test_mm: %d iterations\n", iterations);
+      printf("test_mm: %d blocks allocated, %d bytes used correctly\n", rq, total);
+    }
+    iterations++;
   }
 }

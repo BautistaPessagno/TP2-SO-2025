@@ -76,6 +76,8 @@ int32_t syscallDispatcher(Registers * registers) {
 		case 0x80000121: return my_wait(registers->rdi);
 		case 0x80000130: return my_mm_state((MMState *) registers->rdi);
 		case 0x80000131: return my_print_ps();
+		case 0x80000132: return my_malloc(registers->rdi);
+		case 0x80000133: return my_free(registers->rdi);
 		
 		default:
             return 0;

@@ -44,7 +44,10 @@ GLOBAL sys_yield_proc
 GLOBAL sys_wait_proc
 GLOBAL sys_mm_state
 GLOBAL sys_print_ps
+GLOBAL sys_malloc
+GLOBAL sys_free
 
+; ============================
 section .text
 
 %macro sys_int80 1
@@ -115,3 +118,5 @@ sys_yield_proc:        sys_int80 0x80000120
 sys_wait_proc:         sys_int80 0x80000121
 sys_mm_state:          sys_int80 0x80000130
 sys_print_ps:          sys_int80 0x80000131
+sys_malloc:            sys_int80 0x80000132
+sys_free:              sys_int80 0x80000133

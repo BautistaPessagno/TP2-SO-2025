@@ -50,6 +50,11 @@ int cmd_cat(int argc, char **argv);
 int cmd_wc(int argc, char **argv);
 int cmd_filter(int argc, char **argv);
 
+
+// External commands implemented in Tests/
+int test_mm(int argc, char **argv);
+int test_processes(int argc, char **argv);
+
 static void printPreviousCommand(enum REGISTERABLE_KEYS scancode);
 static void printNextCommand(enum REGISTERABLE_KEYS scancode);
 
@@ -83,6 +88,12 @@ Command commands[] = {
     {.name = "help",
      .function = cmd_help,
      .description = "Prints the available commands"},
+    {.name = "test_mm",
+     .function = test_mm,
+     .description = "Runs the memory test"},
+    {.name = "test_processes",
+     .function = test_processes,
+     .description = "Runs the processes test"},
     {.name = "history",
      .function = cmd_history,
      .description = "Prints the command history"},
