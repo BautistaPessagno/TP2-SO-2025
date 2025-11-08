@@ -145,6 +145,7 @@ int main() {
         // Run the command as a separate process
         int16_t fds[3] = {STDIN, STDOUT, STDERR};
         int32_t pid = createProcessWithFds(commands[i].function, argv, commands[i].name, DEFAULT_PRIORITY, fds);
+        printf("PID: %d\n", pid);
         if (pid >= 0) {
           last_command_output = waitpid(pid);
         } else {

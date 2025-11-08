@@ -48,6 +48,11 @@ typedef struct ProcessSnapshot {
     uint8_t foreground;
 } ProcessSnapshot;
 
+typedef struct ProcessSnapshotList {
+	uint16_t length;
+	ProcessSnapshot *snapshotList;
+} ProcessSnapshotList;
+
 extern void * _initialize_stack_frame(void (*entry)(void*, void*),
                                       void *func, void *stack_end, void *arg1, void *arg2);
 
