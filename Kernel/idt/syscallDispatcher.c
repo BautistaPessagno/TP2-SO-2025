@@ -8,6 +8,7 @@
 #include <time.h>
 #include <processes.h>
 #include <syscall.h>
+#include <memory_manager.h>
 
 extern int64_t register_snapshot[18];
 extern int64_t register_snapshot_taken;
@@ -73,6 +74,8 @@ int32_t syscallDispatcher(Registers * registers) {
 		
 		case 0x80000120: return my_yield();
 		case 0x80000121: return my_wait(registers->rdi);
+		case 0x80000130: return my_mm_state((MMState *) registers->rdi);
+		case 0x80000131: return my_print_ps();
 		
 		default:
             return 0;

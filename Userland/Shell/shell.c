@@ -39,6 +39,17 @@ static int cmd_snake(int argc, char **argv);
 static int cmd_regs(int argc, char **argv);
 static int cmd_time(int argc, char **argv);
 
+// External commands implemented in processes.c
+int cmd_mem(int argc, char **argv);
+int cmd_ps(int argc, char **argv);
+int cmd_loop(int argc, char **argv);
+int cmd_kill(int argc, char **argv);
+int cmd_nice(int argc, char **argv);
+int cmd_block(int argc, char **argv);
+int cmd_cat(int argc, char **argv);
+int cmd_wc(int argc, char **argv);
+int cmd_filter(int argc, char **argv);
+
 static void printPreviousCommand(enum REGISTERABLE_KEYS scancode);
 static void printNextCommand(enum REGISTERABLE_KEYS scancode);
 
@@ -90,6 +101,33 @@ Command commands[] = {
     {.name = "time",
      .function = cmd_time,
      .description = "Prints the current time"},
+    {.name = "mem",
+     .function = cmd_mem,
+     .description = "Prints memory usage: total, used, free"},
+    {.name = "ps",
+     .function = cmd_ps,
+     .description = "Lists processes: pid, ppid, prio, state, fg/bg, stack"},
+    {.name = "loop",
+     .function = cmd_loop,
+     .description = "Prints its pid periodically (usage: loop [periodMs])"},
+    {.name = "kill",
+     .function = cmd_kill,
+     .description = "Kills a process by pid (usage: kill [pid])"},
+    {.name = "nice",
+     .function = cmd_nice,
+     .description = "Changes a process priority (usage: nice [pid] [prio 0-4])"},
+    {.name = "block",
+     .function = cmd_block,
+     .description = "Toggles process block/unblock (usage: block [pid])"},
+    {.name = "cat",
+     .function = cmd_cat,
+     .description = "Reads from stdin and writes to stdout until newline"},
+    {.name = "wc",
+     .function = cmd_wc,
+     .description = "Counts lines, words, bytes from stdin until newline"},
+    {.name = "filter",
+     .function = cmd_filter,
+     .description = "Filters out vowels from stdin until newline"},
 };
 
 char command_history[HISTORY_SIZE][MAX_BUFFER_SIZE] = {0};
@@ -145,7 +183,6 @@ int main() {
         // Run the command as a separate process
         int16_t fds[3] = {STDIN, STDOUT, STDERR};
         int32_t pid = createProcessWithFds(commands[i].function, argv, commands[i].name, DEFAULT_PRIORITY, fds);
-        printf("PID: %d\n", pid);
         if (pid >= 0) {
           last_command_output = waitpid(pid);
         } else {

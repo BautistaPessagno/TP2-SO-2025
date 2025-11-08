@@ -42,6 +42,8 @@ GLOBAL sys_sem_close
 GLOBAL sys_sem_destroy
 GLOBAL sys_yield_proc
 GLOBAL sys_wait_proc
+GLOBAL sys_mm_state
+GLOBAL sys_print_ps
 
 section .text
 
@@ -111,3 +113,5 @@ sys_sem_destroy:       sys_int80 0x80000115
 
 sys_yield_proc:        sys_int80 0x80000120
 sys_wait_proc:         sys_int80 0x80000121
+sys_mm_state:          sys_int80 0x80000130
+sys_print_ps:          sys_int80 0x80000131

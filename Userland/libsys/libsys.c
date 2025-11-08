@@ -26,6 +26,8 @@ extern int32_t sys_sem_close(char *sem_id);
 extern int32_t sys_sem_destroy(char *sem_id);
 extern int32_t sys_yield_proc(void);
 extern int32_t sys_wait_proc(int64_t pid);
+extern int32_t sys_mm_state(void *state);
+extern int32_t sys_print_ps(void);
 
 int32_t getpid(void) {
     return sys_getpid();
@@ -156,4 +158,12 @@ int32_t getRegisterSnapshot(int64_t * registers) {
 
 int32_t getCharacterWithoutDisplay(void) {
     return sys_get_character_without_display();
+}
+
+int32_t getMemoryState(MMState *state) {
+    return sys_mm_state((void *)state);
+}
+
+int32_t printProcesses(void) {
+    return sys_print_ps();
 }

@@ -135,5 +135,13 @@ int32_t semPost(char *sem_id);
 int32_t semClose(char *sem_id);
 int32_t semDestroy(char *sem_id);
 
+// Memory/process helpers
+typedef struct {
+    uint64_t total;
+    uint64_t allocated;
+    uint64_t available;
+} MMState;
+int32_t getMemoryState(MMState *state);
+int32_t printProcesses(void);
 
 #endif

@@ -56,4 +56,8 @@ int32_t sys_get_register_snapshot(int64_t * registers);
 
 int32_t sys_get_character_without_display(void);
 
+// Extra process/memory helpers
+int32_t sys_mm_state(void *state);
+int32_t sys_print_ps(void);
+
 #endif

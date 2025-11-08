@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <memory_manager.h>
 
 int64_t my_getpid();
 int64_t my_create_process(MainFunction code, char **args, const char *name, uint8_t priority, const int16_t fileDescriptors[3]);
@@ -14,3 +15,6 @@ int64_t my_sem_close(char *sem_id);
 int64_t my_sem_destroy(char *sem_id);
 int64_t my_yield();
 int64_t my_wait(int64_t pid);
+// Extra utilities for userland
+int64_t my_mm_state(MMState *state);
+int64_t my_print_ps(void);
