@@ -9,6 +9,80 @@ void stopBeep(void) {
     sys_stop_beep();
 }
 
+// ============================
+// Process and synchronization wrappers
+// ============================
+extern int32_t sys_getpid(void);
+extern int32_t sys_create_process(int (*code)(int, char **), char **args, const char *name, uint8_t priority, const int16_t fileDescriptors[3]);
+extern int32_t sys_nice_proc(uint64_t pid, uint64_t newPrio);
+extern int32_t sys_kill_proc(uint64_t pid);
+extern int32_t sys_block_proc(uint64_t pid);
+extern int32_t sys_unblock_proc(uint64_t pid);
+extern int32_t sys_sem_init(char *sem_id, uint64_t initialValue);
+extern int32_t sys_sem_open(char *sem_id, uint64_t initialValue);
+extern int32_t sys_sem_wait(char *sem_id);
+extern int32_t sys_sem_post(char *sem_id);
+extern int32_t sys_sem_close(char *sem_id);
+extern int32_t sys_sem_destroy(char *sem_id);
+extern int32_t sys_yield_proc(void);
+extern int32_t sys_wait_proc(int64_t pid);
+
+int32_t getpid(void) {
+    return sys_getpid();
+}
+
+int32_t waitpid(int32_t pid) {
+    return sys_wait_proc(pid);
+}
+
+int32_t yield(void) {
+    return sys_yield_proc();
+}
+
+int32_t createProcessWithFds(int (*code)(int, char **), char **args, const char *name, uint8_t priority, const int16_t fileDescriptors[3]) {
+    return sys_create_process(code, args, name, priority, fileDescriptors);
+}
+
+int32_t killProcess(uint16_t pid) {
+    return sys_kill_proc(pid);
+}
+
+int32_t nice(uint16_t pid, uint8_t priority) {
+    return sys_nice_proc(pid, priority);
+}
+
+int32_t block(uint16_t pid) {
+    return sys_block_proc(pid);
+}
+
+int32_t unblock(uint16_t pid) {
+    return sys_unblock_proc(pid);
+}
+
+int32_t semInit(char *sem_id, uint32_t initialValue) {
+    return sys_sem_init(sem_id, initialValue);
+}
+
+int32_t semOpen(char *sem_id, uint32_t initialValue) {
+    return sys_sem_open(sem_id, initialValue);
+}
+
+int32_t semWait(char *sem_id) {
+    return sys_sem_wait(sem_id);
+}
+
+int32_t semPost(char *sem_id) {
+    return sys_sem_post(sem_id);
+}
+
+int32_t semClose(char *sem_id) {
+    return sys_sem_close(sem_id);
+}
+
+int32_t semDestroy(char *sem_id) {
+    return sys_sem_destroy(sem_id);
+}
+
 void setTextColor(uint32_t color) {
     sys_fonts_text_color(color);
 }

@@ -19,4 +19,5 @@ uint8_t getSecond(void);
 uint8_t getMinute(void);
 uint8_t getHour(void);
 
+void forceTimerTick(void);
 #endif

@@ -118,4 +118,22 @@ void sleep(uint32_t milliseconds);
 int32_t getRegisterSnapshot(int64_t * registers);
 int32_t getCharacterWithoutDisplay(void);
 
+// Process and synchronization API
+int32_t getpid(void);
+int32_t waitpid(int32_t pid);
+int32_t yield(void);
+int32_t createProcessWithFds(int (*code)(int, char **), char **args, const char *name, uint8_t priority, const int16_t fileDescriptors[3]);
+int32_t killProcess(uint16_t pid);
+int32_t nice(uint16_t pid, uint8_t priority);
+int32_t block(uint16_t pid);
+int32_t unblock(uint16_t pid);
+
+int32_t semInit(char *sem_id, uint32_t initialValue);
+int32_t semOpen(char *sem_id, uint32_t initialValue);
+int32_t semWait(char *sem_id);
+int32_t semPost(char *sem_id);
+int32_t semClose(char *sem_id);
+int32_t semDestroy(char *sem_id);
+
+
 #endif

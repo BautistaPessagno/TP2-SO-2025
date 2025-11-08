@@ -12,9 +12,10 @@ GLOBAL setPITFrequency
 GLOBAL setSpeaker
 
 GLOBAL getRegisterSnapshot
-
+GLOBAL forceTimerTick
 EXTERN register_snapshot
 EXTERN register_snapshot_taken
+
 
 section .text
 
@@ -144,3 +145,7 @@ _xadd:
     pop rbp
     ret
 
+
+forceTimerTick:
+    int 0x20
+    ret

@@ -6,6 +6,8 @@
 #include <lib.h>
 #include <video.h>
 #include <time.h>
+#include <processes.h>
+#include <syscall.h>
 
 extern int64_t register_snapshot[18];
 extern int64_t register_snapshot_taken;
@@ -51,6 +53,26 @@ int32_t syscallDispatcher(Registers * registers) {
 		case 0x800000E0: return sys_get_register_snapshot((int64_t *) registers->rdi);
 
 		case 0x800000F0: return sys_get_character_without_display();
+		
+		// ============================
+		// Process and sync syscalls
+		// ============================
+		case 0x80000100: return my_getpid();
+		case 0x80000101: return my_create_process((MainFunction) registers->rdi, (char **) registers->rsi, (const char *) registers->rdx, (uint8_t) registers->rcx, (const int16_t *) registers->r8);
+		case 0x80000102: return my_nice(registers->rdi, registers->rsi);
+		case 0x80000103: return my_kill(registers->rdi);
+		case 0x80000104: return my_block(registers->rdi);
+		case 0x80000105: return my_unblock(registers->rdi);
+		
+		case 0x80000110: return my_sem_init((char *) registers->rdi, registers->rsi);
+		case 0x80000111: return my_sem_open((char *) registers->rdi, registers->rsi);
+		case 0x80000112: return my_sem_wait((char *) registers->rdi);
+		case 0x80000113: return my_sem_post((char *) registers->rdi);
+		case 0x80000114: return my_sem_close((char *) registers->rdi);
+		case 0x80000115: return my_sem_destroy((char *) registers->rdi);
+		
+		case 0x80000120: return my_yield();
+		case 0x80000121: return my_wait(registers->rdi);
 		
 		default:
             return 0;
@@ -172,7 +194,6 @@ int32_t sys_fill_video_memory(uint32_t hexColor) {
 // ==================================================================
 
 int32_t sys_exec(int32_t (*fnPtr)(void)) {
-	clear();
 
 	uint8_t fontSize = getFontSize(); 					// preserve font size
 	uint32_t text_color = getTextColor();				// preserve text color
@@ -188,7 +209,6 @@ int32_t sys_exec(int32_t (*fnPtr)(void)) {
 	setTextColor(text_color);
 	setBackgroundColor(background_color);
 
-	clear();
 	return aux;
 }
 

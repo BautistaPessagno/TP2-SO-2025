@@ -139,10 +139,15 @@ int sched_set_status(uint16_t pid, ProcessState new_state) {
     switch (new_state) {
         case READY:
             if (p->state == BLOCKED) {
-                // Sacar de BLOCKED y encolar en READY
+                // Sacar de BLOCKED
                 remove_node(scheduler->blocked, node);
-                push_back(scheduler->ready[p->priority], node);
+                // Política: boost al desbloquear para responsividad
+                p->priority = MAX_PRIORITY;
+                // Encolar al frente de la cola de mayor prioridad
+                prependNode(scheduler->ready[p->priority], node);
                 p->state = READY;
+                // Forzar replanificación para correr cuanto antes
+                scheduler->remainingTicks = 0;
             }
             break;
             
@@ -209,19 +214,19 @@ void *schedule(void *prev_sp) {
         Node *currentNode = scheduler->index[scheduler->currentPid];
         if (currentNode != NULL) {
             Process *currentProc = (Process*)currentNode->data;
-            if (currentProc != NULL && currentProc->state == RUNNING) {
-                // Save context of the preempted task
+            if (currentProc != NULL) {
+                // Siempre guardamos el SP actual del proceso saliente
                 currentProc->stackPos = prev_sp;
-                currentProc->state = READY;
-
-                // Demote priority by one level (min 0), like the reference implementation
-                uint8_t newPrio = (currentProc->priority > 0) ? (currentProc->priority - 1) : currentProc->priority;
-                if (newPrio != currentProc->priority) {
-                    // Requeue in the new priority queue
-                    remove_node(scheduler->ready[currentProc->priority], currentNode);
+                if (currentProc->state == RUNNING) {
+                    // Preemption: pasa a READY y se reencola (baja una prioridad)
+                    currentProc->state = READY;
+                    uint8_t newPrio = (currentProc->priority > 0) ? (currentProc->priority - 1) : currentProc->priority;
                     currentProc->priority = newPrio;
+                    // El nodo no pertenece a ninguna lista en RUNNING, solo lo encolamos
+                    push_back(scheduler->ready[currentProc->priority], currentNode);
                 }
-                push_back(scheduler->ready[currentProc->priority], currentNode);
+                // Si estaba BLOCKED, ya fue encolado en blocked por quien lo bloqueó
+                // y solo necesitábamos preservar su stackPos aquí.
             }
         }
     }
@@ -249,9 +254,23 @@ void *schedule(void *prev_sp) {
     }
     
     if (nextNode == NULL) {
-        // No hay procesos READY: no cambiar de contexto
-        scheduler->currentPid = 0;
-        return prev_sp;
+        // No hay procesos READY en las colas. Intentar encontrar alguno en el índice (ej: idle)
+        for (int pid = 0; pid < SCHED_MAX_PROCS; pid++) {
+            Node *n = scheduler->index[pid];
+            if (n != NULL) {
+                Process *p = (Process*)n->data;
+                if (p != NULL && p->state == READY) {
+                    // Sacar de su cola READY actual y seleccionarlo
+                    remove_node(scheduler->ready[p->priority], n);
+                    nextNode = n;
+                    break;
+                }
+            }
+        }
+        if (nextNode == NULL) {
+            // Mantener el contexto actual si no hay opción válida
+            return prev_sp;
+        }
     }
     
     Process *nextProc = (Process*)nextNode->data;
@@ -315,8 +334,11 @@ static void destroyZombie(Scheduler *scheduler, Process *zombie) {
 	Node *zombieNode = scheduler->index[zombie->pid];
 	scheduler->qtyProcesses--;
 	scheduler->index[zombie->pid] = NULL;
+	// Liberar recursos del proceso y el contenedor Node asociado al índice
 	freeProcess(zombie);
-	freeLinkedListADTDeep(zombieNode);
+	if (zombieNode != NULL) {
+		mm_free(zombieNode);
+	}
 }
 
 int32_t waitpid(uint16_t pid) {
@@ -334,7 +356,18 @@ int32_t waitpid(uint16_t pid) {
 		sched_set_status(parent->pid, BLOCKED);
 		sched_yield();
 	}
-	removeNode((LinkedListADT)parent->zombieChildren, zombieNode);
+	// Remover el hijo zombie de la lista de zombies del padre (por data)
+	LinkedListADT zlist = (LinkedListADT)parent->zombieChildren;
+	if (zlist != NULL) {
+		Node *iter = getFirst(zlist);
+		while (iter != NULL) {
+			if (iter->data == (void *)zombieProcess) {
+				removeNode(zlist, iter);
+				break;
+			}
+			iter = iter->next;
+		}
+	}
 	destroyZombie(scheduler, zombieProcess);
 	return zombieProcess->retValue;
 }
@@ -349,6 +382,9 @@ int sched_kill_process(uint16_t pid, int32_t ret) {
     Process *p = (Process*)node->data;
     
     if (p == NULL) {
+        return -1;
+    }
+    if (p->state == ZOMBIE || p->unkillable) {
         return -1;
     }
     
@@ -373,7 +409,7 @@ int sched_kill_process(uint16_t pid, int32_t ret) {
             Process *parent = (Process*)parentNode->data;
             if (parent != NULL && parent->zombieChildren != NULL) {
                 LinkedListADT zombieList = (LinkedListADT)parent->zombieChildren;
-                appendElement(zombieList, p);
+                (void)appendElement(zombieList, (void*)p); // la lista guarda Process*
             }
         }
     }
@@ -381,6 +417,8 @@ int sched_kill_process(uint16_t pid, int32_t ret) {
     // Si era el proceso actual, forzar cambio
     if (pid == scheduler->currentPid) {
         sched_yield();
+        // Disparar inmediatamente el tick para no volver al contexto destruido
+        forceTimerTick();
     }
     
     // Despertar al padre si estaba esperando
@@ -388,9 +426,19 @@ int sched_kill_process(uint16_t pid, int32_t ret) {
         Node *parentNode = scheduler->index[p->parentPid];
         if (parentNode != NULL) {
             Process *parent = (Process*)parentNode->data;
-            if (parent != NULL && parent->state == BLOCKED && 
-                parent->waitingForPid == pid) {
-                sched_set_status(p->parentPid, READY);
+            if (parent != NULL && parent->waitingForPid == pid) {
+                // Aseguramos que el padre pase a READY independientemente del estado actual
+                // Si estaba bloqueado, remover de la cola de bloqueados
+                if (parent->state == BLOCKED) {
+                    remove_node(scheduler->blocked, parentNode);
+                }
+                parent->state = READY;
+                parent->waitingForPid = 0;
+                // Boost de prioridad y encolado al frente
+                parent->priority = MAX_PRIORITY;
+                prependNode(scheduler->ready[parent->priority], parentNode);
+                // Forzar replanificación inmediata
+                scheduler->remainingTicks = 0;
             }
         }
     }

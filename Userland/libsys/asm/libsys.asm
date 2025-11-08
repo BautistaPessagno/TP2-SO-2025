@@ -28,6 +28,20 @@ GLOBAL sys_window_height
 GLOBAL sys_get_register_snapshot
 
 GLOBAL sys_get_character_without_display
+GLOBAL sys_getpid
+GLOBAL sys_create_process
+GLOBAL sys_nice_proc
+GLOBAL sys_kill_proc
+GLOBAL sys_block_proc
+GLOBAL sys_unblock_proc
+GLOBAL sys_sem_init
+GLOBAL sys_sem_open
+GLOBAL sys_sem_wait
+GLOBAL sys_sem_post
+GLOBAL sys_sem_close
+GLOBAL sys_sem_destroy
+GLOBAL sys_yield_proc
+GLOBAL sys_wait_proc
 
 section .text
 
@@ -76,3 +90,24 @@ sys_sleep_milis: sys_int80 0x800000D0
 sys_get_register_snapshot: sys_int80 0x800000E0
 
 sys_get_character_without_display: sys_int80 0x800000F0
+
+; ============================
+; Process and sync syscalls
+; ============================
+; 0x80000100.. series reserved for process/semaphore/yield/wait
+sys_getpid:            sys_int80 0x80000100
+sys_create_process:    sys_int80 0x80000101
+sys_nice_proc:         sys_int80 0x80000102
+sys_kill_proc:         sys_int80 0x80000103
+sys_block_proc:        sys_int80 0x80000104
+sys_unblock_proc:      sys_int80 0x80000105
+
+sys_sem_init:          sys_int80 0x80000110
+sys_sem_open:          sys_int80 0x80000111
+sys_sem_wait:          sys_int80 0x80000112
+sys_sem_post:          sys_int80 0x80000113
+sys_sem_close:         sys_int80 0x80000114
+sys_sem_destroy:       sys_int80 0x80000115
+
+sys_yield_proc:        sys_int80 0x80000120
+sys_wait_proc:         sys_int80 0x80000121

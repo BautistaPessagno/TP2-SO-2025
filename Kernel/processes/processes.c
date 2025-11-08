@@ -138,12 +138,16 @@ uint16_t createProcess(MainFunction code,
     uint8_t priority,
     const int16_t fileDescriptors[3],
     uint8_t unkillable) {
-Process *p = (Process*)mm_malloc(sizeof(Process));
-if (p == 0) return;
+        Process *p = (Process*)mm_malloc(sizeof(Process));
+    if (p == 0) return -1;
 uint16_t parent = sched_getpid(); // 0 if none yet
 uint16_t pid = next_pid++;
 initProcess(p, pid, parent, code, args, name, priority, fileDescriptors, unkillable);
-(void)sched_register_process(p);
+    if (sched_register_process(p) == -1) {
+        mm_free(p);
+        return -1;
+    }
+    return pid;
 }
 
 
@@ -155,6 +159,11 @@ void processWrapper(void *fn, void *argv_ptr) {
     int ret = code(argc, args);
     
     killCurrentProcess(ret);
+    // Nunca volver a ejecutar código del proceso luego de solicitar su finalización.
+    // En caso de que el scheduler no haya hecho el cambio aún, ceder CPU indefinidamente.
+    for(;;) {
+        sched_yield();
+    }
 }
 
 void closeFileDescriptors(Process *p) {

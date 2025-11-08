@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include <stdio.h>
+#include <libc/stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -14,6 +15,11 @@ static void *const snakeModuleAddress = (void *)0x500000;
 
 #define MAX_BUFFER_SIZE 1024
 #define HISTORY_SIZE 10
+#define MAX_ARGS 32
+#define DEFAULT_PRIORITY 4
+#define STDIN 0
+#define STDOUT 1
+#define STDERR 2
 
 #define INC_MOD(x, m) x = (((x) + 1) % (m))
 #define SUB_MOD(a, b, m) ((a) - (b) < 0 ? (m) - (b) + (a) : (a) - (b))
@@ -22,17 +28,16 @@ static void *const snakeModuleAddress = (void *)0x500000;
 static char buffer[MAX_BUFFER_SIZE];
 static int buffer_dim = 0;
 
-int clear(void);
-int echo(void);
-int exit(void);
-int fontdec(void);
-int font(void);
-int help(void);
-int history(void);
-int man(void);
-int snake(void);
-int regs(void);
-int time(void);
+static int cmd_clear(int argc, char **argv);
+static int cmd_echo(int argc, char **argv);
+static int cmd_exit(int argc, char **argv);
+static int cmd_font(int argc, char **argv);
+static int cmd_help(int argc, char **argv);
+static int cmd_history(int argc, char **argv);
+static int cmd_man(int argc, char **argv);
+static int cmd_snake(int argc, char **argv);
+static int cmd_regs(int argc, char **argv);
+static int cmd_time(int argc, char **argv);
 
 static void printPreviousCommand(enum REGISTERABLE_KEYS scancode);
 static void printNextCommand(enum REGISTERABLE_KEYS scancode);
@@ -41,49 +46,49 @@ static uint8_t last_command_arrowed = 0;
 
 typedef struct {
   char *name;
-  int (*function)(void);
+  int (*function)(int, char**);
   char *description;
 } Command;
 
 /* All available commands. Sorted alphabetically by their name */
 Command commands[] = {
     {.name = "clear",
-     .function = (int (*)(void))(unsigned long long)clear,
+     .function = cmd_clear,
      .description = "Clears the screen"},
     {.name = "divzero",
-     .function = (int (*)(void))(unsigned long long)_divzero,
+     .function = (int (*)(int, char **))(unsigned long long)_divzero,
      .description = "Generates a division by zero exception"},
     {.name = "echo",
-     .function = (int (*)(void))(unsigned long long)echo,
+     .function = cmd_echo,
      .description = "Prints the input string"},
     {.name = "exit",
-     .function = (int (*)(void))(unsigned long long)exit,
+     .function = cmd_exit,
      .description = "Command exits w/ the provided exit code or 0"},
     {.name = "font",
-     .function = (int (*)(void))(unsigned long long)font,
+     .function = cmd_font,
      .description =
          "Increases or decreases the font size.\n\t\t\t\tUse:\n\t\t\t\t\t  + "
          "font increase\n\t\t\t\t\t  + font decrease"},
     {.name = "help",
-     .function = (int (*)(void))(unsigned long long)help,
+     .function = cmd_help,
      .description = "Prints the available commands"},
     {.name = "history",
-     .function = (int (*)(void))(unsigned long long)history,
+     .function = cmd_history,
      .description = "Prints the command history"},
     {.name = "invop",
-     .function = (int (*)(void))(unsigned long long)_invalidopcode,
+     .function = (int (*)(int, char **))(unsigned long long)_invalidopcode,
      .description = "Generates an invalid Opcode exception"},
     {.name = "regs",
-     .function = (int (*)(void))(unsigned long long)regs,
+     .function = cmd_regs,
      .description = "Prints the register snapshot, if any"},
     {.name = "man",
-     .function = (int (*)(void))(unsigned long long)man,
+     .function = cmd_man,
      .description = "Prints the description of the provided command"},
     {.name = "snake",
-     .function = (int (*)(void))(unsigned long long)snake,
+     .function = cmd_snake,
      .description = "Launches the snake game"},
     {.name = "time",
-     .function = (int (*)(void))(unsigned long long)time,
+     .function = cmd_time,
      .description = "Prints the current time"},
 };
 
@@ -94,7 +99,7 @@ uint8_t command_history_last = 0;
 static uint64_t last_command_output = 0;
 
 int main() {
-  clear();
+  clearScreen();
 
   registerKey(KP_UP_KEY, printPreviousCommand);
   registerKey(KP_DOWN_KEY, printNextCommand);
@@ -122,13 +127,30 @@ int main() {
 
     buffer[buffer_dim] = 0;
 
-    char *command = strtok(buffer, " ");
+    // Parse argv from the full command line (preserved in command_history_buffer)
+    char *argv[MAX_ARGS] = {0};
+    int argc = 0;
+    char *token = strtok(command_history_buffer, " ");
+    while (token != NULL && argc < MAX_ARGS - 1) {
+      argv[argc++] = token;
+      token = strtok(NULL, " ");
+    }
+    argv[argc] = NULL;
+
+    char *command = argv[0];
     int i = 0;
 
     for (; i < sizeof(commands) / sizeof(Command); i++) {
       if (strcmp(commands[i].name, command) == 0) {
-        printf("running command... \n");
-        last_command_output = commands[i].function();
+        // Run the command as a separate process
+        int16_t fds[3] = {STDIN, STDOUT, STDERR};
+        int32_t pid = createProcessWithFds(commands[i].function, argv, commands[i].name, DEFAULT_PRIORITY, fds);
+        if (pid >= 0) {
+          last_command_output = waitpid(pid);
+        } else {
+          perror("\e[0;31mFailed to create process\e[0m\n");
+          last_command_output = (uint64_t)-1;
+        }
         strncpy(command_history[command_history_last], command_history_buffer,
                 255);
         command_history[command_history_last][buffer_dim] = '\0';
@@ -170,7 +192,7 @@ static void printNextCommand(enum REGISTERABLE_KEYS scancode) {
   }
 }
 
-int history(void) {
+static int cmd_history(int argc, char **argv) {
   uint8_t last = command_history_last;
   DEC_MOD(last, HISTORY_SIZE);
   uint8_t i = 0;
@@ -182,85 +204,53 @@ int history(void) {
   return 0;
 }
 
-int time(void) {
+static int cmd_time(int argc, char **argv) {
   int hour, minute, second;
   getDate(&hour, &minute, &second);
   printf("Current time: %xh %xm %xs\n", hour, minute, second);
   return 0;
 }
 
-int echo(void) {
-  for (int i = strlen("echo") + 1; i < buffer_dim; i++) {
-    switch (buffer[i]) {
-    case '\\':
-      switch (buffer[i + 1]) {
-      case 'n':
-        printf("\n");
-        i++;
-        break;
-      case 'e':
-#ifdef ANSI_4_BIT_COLOR_SUPPORT
-        i++;
-        parseANSI(buffer, &i);
-#else
-        while (buffer[i] != 'm')
-          i++; // ignores escape code, assumes valid format
-        i++;
-#endif
-        break;
-      case 'r':
-        printf("\r");
-        i++;
-        break;
-      case '\\':
-        i++;
-      default:
-        putchar(buffer[i]);
-        break;
-      }
-      break;
-    case '$':
-      if (buffer[i + 1] == '?') {
-        printf("%d", last_command_output);
-        i++;
-        break;
-      }
-    default:
-      putchar(buffer[i]);
-      break;
-    }
+static int cmd_echo(int argc, char **argv) {
+  for (int i = 1; i < argc; i++) {
+    printf("%s", argv[i]);
+    if (i + 1 < argc) printf(" ");
   }
   printf("\n");
   return 0;
 }
 
-int help(void) {
+static int cmd_help(int argc, char **argv) {
   printf("Available commands:\n");
   for (int i = 0; i < sizeof(commands) / sizeof(Command); i++) {
     printf("%s%s\t ---\t%s\n", commands[i].name,
            strlen(commands[i].name) < 4 ? "\t" : "", commands[i].description);
   }
   printf("\n");
-  return 0;
+  return ;
 }
 
-int clear(void) {
+static int cmd_clear(int argc, char **argv) {
   clearScreen();
   return 0;
 }
 
-int exit(void) {
-  char *buffer = strtok(NULL, " ");
+static int cmd_exit(int argc, char **argv) {
   int aux = 0;
-  sscanf(buffer, "%d", &aux);
+  if (argc > 1) {
+    sscanf(argv[1], "%d", &aux);
+  }
   return aux;
 }
 
-int font(void) {
-  char *arg = strtok(NULL, " ");
-  if (strcasecmp(arg, "increase") == 0) {
+static int cmd_font(int argc, char **argv) {
+  if (argc < 2) {
+    perror("Invalid argument\n");
+    return 1;
+  }
+  if (strcasecmp(argv[1], "increase") == 0) {
     return increaseFontSize();
-  } else if (strcasecmp(arg, "decrease") == 0) {
+  } else if (strcasecmp(argv[1], "decrease") == 0) {
     return decreaseFontSize();
   }
 
@@ -268,8 +258,8 @@ int font(void) {
   return 0;
 }
 
-int man(void) {
-  char *command = strtok(NULL, " ");
+static int cmd_man(int argc, char **argv) {
+  char *command = argc > 1 ? argv[1] : NULL;
 
   if (command == NULL) {
     perror("No argument provided\n");
@@ -288,7 +278,7 @@ int man(void) {
   return 1;
 }
 
-int regs(void) {
+static int cmd_regs(int argc, char **argv) {
   const static char *register_names[] = {
       "rax", "rbx", "rcx", "rdx", "rbp", "rdi", "rsi", "r8 ", "r9 ",
       "r10", "r11", "r12", "r13", "r14", "r15", "rsp", "rip", "rflags"};
@@ -311,4 +301,4 @@ int regs(void) {
   return 0;
 }
 
-int snake(void) { return exec(snakeModuleAddress); }
+static int cmd_snake(int argc, char **argv) { return exec(snakeModuleAddress); }
