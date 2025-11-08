@@ -18,10 +18,10 @@ int test_mm(int argc, char **argv) {
   uint32_t total;
   uint64_t max_memory;
 
-  if (argc < 2)
+  if (argc < 1)
     return -1;
 
-  if ((max_memory = satoi(argv[1])) <= 0)
+  if ((max_memory = satoi(argv[0])) <= 0)
     return -1;
 
   int iterations = 0;
