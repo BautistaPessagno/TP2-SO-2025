@@ -273,9 +273,10 @@ uint8_t keyboardHandler(){
             c = TO_UPPER(c);
         }
 
-        // Detect Ctrl + D: do not buffer or echo, just print a message
+        // Detect Ctrl + D: push EOF sentinel into input buffer (no echo)
         if (CONTROL_KEY_PRESSED && is_pressed && makeCode(scancode) == 0x20) { // scancode 0x20 == 'd'/'D'
-            print("CTRL+D pressed\n");
+            buffer[to_write] = EOF;
+            INC_MOD(to_write, BUFFER_SIZE);
             return scancode;
         }
 
