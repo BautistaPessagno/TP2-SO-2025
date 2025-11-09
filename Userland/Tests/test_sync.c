@@ -3,7 +3,7 @@
 #include <libsys/sys.h>
 #include "tests/test_util.h"
 
-#define SEM_ID "sem"
+#define SEM_ID 67
 #define TOTAL_PAIR_PROCESSES 2
 
 int64_t global; // shared memory
@@ -33,7 +33,7 @@ int my_process_inc(int argc, char **argv) {
     return -1;
 
   if (use_sem)
-    if (!semOpen(SEM_ID, 1)) {
+    if (semOpen(SEM_ID, 1) == -1) {
       printf("test_sync: ERROR opening semaphore\n");
       return -1;
     }
@@ -47,8 +47,6 @@ int my_process_inc(int argc, char **argv) {
       semPost(SEM_ID);
   }
 
-  if (use_sem)
-    semClose(SEM_ID);
 
   return 0;
 }
@@ -74,6 +72,9 @@ uint64_t test_sync(uint64_t argc, char *argv[]) { //{n, use_sem, 0}
     waitpid(pids[i]);
     waitpid(pids[i + TOTAL_PAIR_PROCESSES]);
   }
+
+  if (satoi(argv[1]) == 1)
+    semClose(SEM_ID);
 
   printf("Final value: %d\n", global);
 

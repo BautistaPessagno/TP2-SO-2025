@@ -104,7 +104,13 @@ int64_t my_sem_init(char *sem_id, uint64_t initialValue) {
 }
 
 int64_t my_sem_open(char *sem_id, uint64_t initialValue) {
-  return semOpen(sem_id);
+  int8_t ret = semOpen(sem_id);
+  if(ret == -1) {
+    semInit(sem_id, initialValue);
+    ret = semOpen(sem_id);
+    return ret;
+  }
+  return ret;
 }
 
 int64_t my_sem_wait(char *sem_id) {

@@ -15,7 +15,7 @@
 
 typedef struct Semaphore {
 	uint32_t value;
-	int mutex;					  // 0 libre, 1 ocupado
+	uint64_t mutex;				  // 0 libre, 1 ocupado (64-bit, matches _xchg)
 	LinkedListADT semaphoreQueue; // LinkedListADT de pids
 	LinkedListADT mutexQueue;	  // LinkedListADT de pids
 } Semaphore;
@@ -53,7 +53,7 @@ int8_t semInit(uint16_t id, uint32_t initialValue) {
 
 int8_t semOpen(uint16_t id) {
 	SemaphoreManagerADT semManager = getSemaphoreManager();
-	return -1 * (semManager->semaphores[id] == NULL);
+	return semManager->semaphores[id] == NULL ? -1 : 0;
 }
 
 int8_t semClose(uint16_t id) {
@@ -125,10 +125,7 @@ static void releaseMutex(Semaphore *sem) {
 static int up(Semaphore *sem) {
 	acquireMutex(sem);
 	sem->value++;
-	if (sem->value == 0) {
-		releaseMutex(sem);
-		return -1;
-	}
+	// Si hay procesos esperando por el semáforo, reanudar uno
 	resumeFirstAvailableProcess(sem->semaphoreQueue);
 	releaseMutex(sem);
 	// yield();
