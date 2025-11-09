@@ -30,6 +30,7 @@
 #define FD_STDIN  0
 #define FD_STDOUT 1
 #define FD_STDERR 2
+#define DEV_NULL (-1)
 
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 
@@ -144,6 +145,9 @@ void putChar(char ascii) {
 }
 
 int32_t printToFd(int32_t fd, const char * string, int32_t count) {
+    if (fd == DEV_NULL) {
+        return count;
+    }
     if (fd != file_descriptor) {
         switch (fd) {
             case FD_STDIN:

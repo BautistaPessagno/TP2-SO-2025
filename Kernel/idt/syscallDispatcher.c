@@ -96,11 +96,17 @@ int32_t sys_write(int32_t fd, char * __user_buf, int32_t count) {
 	// 1) If fd is a pipe id (>= BUILT_IN_DESCRIPTORS), write to that pipe
 	// 2) Else if fd == STDOUT but the current process has STDOUT redirected to a pipe, write to that pipe
 	// 3) Else write to screen/tty
+	if (fd == DEV_NULL) {
+		return count;
+	}
 	if (fd >= BUILT_IN_DESCRIPTORS) {
 		return (int32_t) writePipe(getpid(), (uint16_t)fd, __user_buf, (uint64_t)count);
 	}
 	if (fd == STDOUT) {
 		int16_t mapped = getCurrentProcessFileDescriptor(STDOUT);
+		if (mapped == DEV_NULL) {
+			return count;
+		}
 		if (mapped >= BUILT_IN_DESCRIPTORS) {
 			return (int32_t) writePipe(getpid(), (uint16_t)mapped, __user_buf, (uint64_t)count);
 		}
@@ -113,11 +119,17 @@ int32_t sys_read(int32_t fd, signed char * __user_buf, int32_t count) {
 	// 1) If fd is a pipe id (>= BUILT_IN_DESCRIPTORS), read from that pipe
 	// 2) Else if fd == STDIN but the current process has STDIN redirected to a pipe, read from that pipe
 	// 3) Else read from keyboard buffer
+	if (fd == DEV_NULL) {
+		return 0;
+	}
 	if (fd >= BUILT_IN_DESCRIPTORS) {
 		return (int32_t) readPipe((uint16_t)fd, (char *)__user_buf, (uint64_t)count);
 	}
 	if (fd == STDIN) {
 		int16_t mapped = getCurrentProcessFileDescriptor(STDIN);
+		if (mapped == DEV_NULL) {
+			return 0;
+		}
 		if (mapped >= BUILT_IN_DESCRIPTORS) {
 			return (int32_t) readPipe((uint16_t)mapped, (char *)__user_buf, (uint64_t)count);
 		}

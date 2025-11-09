@@ -9,6 +9,7 @@
 #define STDIN  0
 #define STDOUT 1
 #define STDERR 2
+#define DEV_NULL (-1)
 #define BUILT_IN_DESCRIPTORS 3
 
 typedef int (*MainFunction)(int, char**);

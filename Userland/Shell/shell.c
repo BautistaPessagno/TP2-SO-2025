@@ -1,6 +1,6 @@
+#include <libc/stdio.h>
 #include <stddef.h>
 #include <stdio.h>
-#include <libc/stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -20,6 +20,10 @@ static void *const snakeModuleAddress = (void *)0x500000;
 #define STDIN 0
 #define STDOUT 1
 #define STDERR 2
+
+#ifndef DEV_NULL
+#define DEV_NULL (-1)
+#endif
 
 #define INC_MOD(x, m) x = (((x) + 1) % (m))
 #define SUB_MOD(a, b, m) ((a) - (b) < 0 ? (m) - (b) + (a) : (a) - (b))
@@ -50,7 +54,6 @@ int cmd_cat(int argc, char **argv);
 int cmd_wc(int argc, char **argv);
 int cmd_filter(int argc, char **argv);
 
-
 // External commands implemented in Tests/
 int test_mm(int argc, char **argv);
 int test_processes(int argc, char **argv);
@@ -59,12 +62,14 @@ int test_prio(int argc, char **argv);
 
 static void printPreviousCommand(enum REGISTERABLE_KEYS scancode);
 static void printNextCommand(enum REGISTERABLE_KEYS scancode);
+static uint8_t stripBackgroundMarker(void);
+static void saveCommandToHistory(uint8_t run_in_background);
 
 static uint8_t last_command_arrowed = 0;
 
 typedef struct {
   char *name;
-  int (*function)(int, char**);
+  int (*function)(int, char **);
   char *description;
 } Command;
 
@@ -95,13 +100,15 @@ Command commands[] = {
      .description = "Runs the memory test. Usage: test_mm [max_memory]"},
     {.name = "test_processes",
      .function = test_processes,
-     .description = "Runs the processes test. Usage: test_processes [max_processes]"},
+     .description =
+         "Runs the processes test. Usage: test_processes [max_processes]"},
     {.name = "test_sync",
      .function = test_sync,
      .description = "Runs the sync test. Usage: test_sync [n] [use_sem]"},
     {.name = "test_prio",
      .function = test_prio,
-     .description = "Runs the priority test. Usage: test_prio [max_value] [max_prio (optional)]"},
+     .description = "Runs the priority test. Usage: test_prio [max_value] "
+                    "[max_prio (optional)]"},
     {.name = "history",
      .function = cmd_history,
      .description = "Prints the command history"},
@@ -134,7 +141,8 @@ Command commands[] = {
      .description = "Kills a process by pid (usage: kill [pid])"},
     {.name = "nice",
      .function = cmd_nice,
-     .description = "Changes a process priority (usage: nice [pid] [prio 0-4])"},
+     .description =
+         "Changes a process priority (usage: nice [pid] [prio 0-4])"},
     {.name = "block",
      .function = cmd_block,
      .description = "Toggles process block/unblock (usage: block [pid])"},
@@ -184,6 +192,9 @@ int main() {
 
     buffer[buffer_dim] = 0;
 
+    // checkea si hay un & al final y lo elimina
+    uint8_t run_in_background = stripBackgroundMarker();
+
     // Detect simple two-stage pipeline: left | right
     char line_copy[MAX_BUFFER_SIZE];
     strncpy(line_copy, command_history_buffer, MAX_BUFFER_SIZE - 1);
@@ -192,7 +203,10 @@ int main() {
     {
       int __i = 0;
       while (line_copy[__i] != 0) {
-        if (line_copy[__i] == '|') { pipe_pos = &line_copy[__i]; break; }
+        if (line_copy[__i] == '|') {
+          pipe_pos = &line_copy[__i];
+          break;
+        }
         __i++;
       }
     }
@@ -203,13 +217,19 @@ int main() {
       char *left = line_copy;
       char *right = pipe_pos + 1;
       // Trim left
-      while (*left == ' ') left++;
+      while (*left == ' ')
+        left++;
       char *end = left + strlen(left);
-      while (end > left && *(end - 1) == ' ') { *(--end) = 0; }
+      while (end > left && *(end - 1) == ' ') {
+        *(--end) = 0;
+      }
       // Trim right
-      while (*right == ' ') right++;
+      while (*right == ' ')
+        right++;
       end = right + strlen(right);
-      while (end > right && *(end - 1) == ' ') { *(--end) = 0; }
+      while (end > right && *(end - 1) == ' ') {
+        *(--end) = 0;
+      }
 
       // Tokenize both sides
       char *argvL[MAX_ARGS] = {0}, *argvR[MAX_ARGS] = {0};
@@ -237,8 +257,10 @@ int main() {
       // Find commands
       int leftIdx = -1, rightIdx = -1;
       for (int ii = 0; ii < sizeof(commands) / sizeof(Command); ii++) {
-        if (strcmp(commands[ii].name, argvL[0]) == 0) leftIdx = ii;
-        if (strcmp(commands[ii].name, argvR[0]) == 0) rightIdx = ii;
+        if (strcmp(commands[ii].name, argvL[0]) == 0)
+          leftIdx = ii;
+        if (strcmp(commands[ii].name, argvR[0]) == 0)
+          rightIdx = ii;
       }
       if (leftIdx == -1) {
         fprintf(FD_STDERR, "\e[0;33mCommand not found:\e[0m %s\n", argvL[0]);
@@ -261,29 +283,34 @@ int main() {
         continue;
       }
 
-      int16_t fdsL[3] = {STDIN, p, STDERR};
-      int16_t fdsR[3] = {p, STDOUT, STDERR};
+      int16_t fdsL[3] = {run_in_background ? DEV_NULL : STDIN, p, STDERR};
+      int16_t fdsR[3] = {p, run_in_background ? DEV_NULL : STDOUT, STDERR};
 
       char **argsL = (argcL > 1) ? &argvL[1] : NULL;
       char **argsR = (argcR > 1) ? &argvR[1] : NULL;
 
-      int32_t pidL = createProcessWithFds(commands[leftIdx].function, argsL, commands[leftIdx].name, DEFAULT_PRIORITY, fdsL);
-      int32_t pidR = createProcessWithFds(commands[rightIdx].function, argsR, commands[rightIdx].name, DEFAULT_PRIORITY, fdsR);
+      int32_t pidL =
+          createProcessWithFds(commands[leftIdx].function, argsL,
+                               commands[leftIdx].name, DEFAULT_PRIORITY, fdsL);
+      int32_t pidR =
+          createProcessWithFds(commands[rightIdx].function, argsR,
+                               commands[rightIdx].name, DEFAULT_PRIORITY, fdsR);
 
-      if (pidL >= 0) waitpid(pidL);
-      if (pidR >= 0) waitpid(pidR);
+      if (!run_in_background) {
+        if (pidL >= 0)
+          waitpid(pidL);
+        if (pidR >= 0)
+          waitpid(pidR);
+      }
 
-      // Save to history
-      strncpy(command_history[command_history_last], command_history_buffer, 255);
-      command_history[command_history_last][buffer_dim] = '\0';
-      INC_MOD(command_history_last, HISTORY_SIZE);
-      last_command_arrowed = command_history_last;
+      saveCommandToHistory(run_in_background);
 
       buffer[0] = buffer_dim = 0;
       continue;
     }
 
-    // Parse argv from the full command line (preserved in command_history_buffer)
+    // Parse argv from the full command line (preserved in
+    // command_history_buffer)
     char *argv[MAX_ARGS] = {0};
     int argc = 0;
     char *token = strtok(command_history_buffer, " ");
@@ -306,19 +333,22 @@ int main() {
     for (; i < sizeof(commands) / sizeof(Command); i++) {
       if (strcmp(commands[i].name, command) == 0) {
         // Run the command as a separate process
-        int16_t fds[3] = {STDIN, STDOUT, STDERR};
-        int32_t pid = createProcessWithFds(commands[i].function, command_args, commands[i].name, DEFAULT_PRIORITY, fds);
+        int16_t fds[3] = {run_in_background ? DEV_NULL : STDIN,
+                          run_in_background ? DEV_NULL : STDOUT, STDERR};
+        int32_t pid =
+            createProcessWithFds(commands[i].function, command_args,
+                                 commands[i].name, DEFAULT_PRIORITY, fds);
         if (pid >= 0) {
-          last_command_output = waitpid(pid);
+          if (run_in_background) {
+            last_command_output = 0;
+          } else {
+            last_command_output = waitpid(pid);
+          }
         } else {
           perror("\e[0;31mFailed to create process\e[0m\n");
           last_command_output = (uint64_t)-1;
         }
-        strncpy(command_history[command_history_last], command_history_buffer,
-                255);
-        command_history[command_history_last][buffer_dim] = '\0';
-        INC_MOD(command_history_last, HISTORY_SIZE);
-        last_command_arrowed = command_history_last;
+        saveCommandToHistory(run_in_background);
         break;
       }
     }
@@ -337,6 +367,56 @@ int main() {
 
   __builtin_unreachable();
   return 0;
+}
+
+static uint8_t stripBackgroundMarker(void) {
+  int idx = buffer_dim - 1;
+  while (idx >= 0 && (command_history_buffer[idx] == ' ' ||
+                      command_history_buffer[idx] == '\t')) {
+    command_history_buffer[idx] = 0;
+    buffer[idx] = 0;
+    idx--;
+  }
+
+  uint8_t run_in_background = 0;
+  if (idx >= 0 && command_history_buffer[idx] == '&') {
+    run_in_background = 1;
+    command_history_buffer[idx] = 0;
+    buffer[idx] = 0;
+    idx--;
+    while (idx >= 0 && (command_history_buffer[idx] == ' ' ||
+                        command_history_buffer[idx] == '\t')) {
+      command_history_buffer[idx] = 0;
+      buffer[idx] = 0;
+      idx--;
+    }
+  }
+
+  buffer_dim = idx + 1;
+  buffer[buffer_dim] = 0;
+  command_history_buffer[buffer_dim] = 0;
+  return run_in_background;
+}
+
+static void saveCommandToHistory(uint8_t run_in_background) {
+  const size_t copy_limit = 255;
+  size_t original_len = buffer_dim;
+  size_t stored_len = original_len;
+
+  if (run_in_background && stored_len + 2 < MAX_BUFFER_SIZE) {
+    command_history_buffer[stored_len++] = ' ';
+    command_history_buffer[stored_len++] = '&';
+    command_history_buffer[stored_len] = 0;
+  }
+
+  strncpy(command_history[command_history_last], command_history_buffer,
+          copy_limit);
+  command_history[command_history_last][stored_len] = '\0';
+  INC_MOD(command_history_last, HISTORY_SIZE);
+  last_command_arrowed = command_history_last;
+
+  command_history_buffer[original_len] = 0;
+  buffer_dim = original_len;
 }
 
 static void printPreviousCommand(enum REGISTERABLE_KEYS scancode) {
@@ -377,7 +457,8 @@ static int cmd_time(int argc, char **argv) {
 static int cmd_echo(int argc, char **argv) {
   for (int i = 0; i < argc; i++) {
     printf("%s", argv[i]);
-    if (i + 1 < argc) printf(" ");
+    if (i + 1 < argc)
+      printf(" ");
   }
   printf("\n");
   return 0;
@@ -390,7 +471,7 @@ static int cmd_help(int argc, char **argv) {
            strlen(commands[i].name) < 4 ? "\t" : "", commands[i].description);
   }
   printf("\n");
-  return ;
+  return;
 }
 
 static int cmd_clear(int argc, char **argv) {
