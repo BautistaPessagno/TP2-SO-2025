@@ -47,6 +47,8 @@ GLOBAL sys_print_ps
 GLOBAL sys_malloc
 GLOBAL sys_free
 
+GLOBAL sys_pipe_get
+
 ; ============================
 section .text
 
@@ -120,3 +122,4 @@ sys_mm_state:          sys_int80 0x80000130
 sys_print_ps:          sys_int80 0x80000131
 sys_malloc:            sys_int80 0x80000132
 sys_free:              sys_int80 0x80000133
+sys_pipe_get:          sys_int80 0x80000140

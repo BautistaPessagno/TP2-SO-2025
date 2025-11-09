@@ -9,6 +9,8 @@
 #include <processes.h>
 #include <syscall.h>
 #include <memory_manager.h>
+#include <pipe_manager.h>
+#include <scheduler.h>
 
 extern int64_t register_snapshot[18];
 extern int64_t register_snapshot_taken;
@@ -78,6 +80,7 @@ int32_t syscallDispatcher(Registers * registers) {
 		case 0x80000131: return my_print_ps();
 		case 0x80000132: return my_malloc(registers->rdi);
 		case 0x80000133: return my_free(registers->rdi);
+		case 0x80000140: return my_pipe_get();
 		
 		default:
             return 0;
@@ -89,10 +92,36 @@ int32_t syscallDispatcher(Registers * registers) {
 // ==================================================================
 
 int32_t sys_write(int32_t fd, char * __user_buf, int32_t count) {
+	// Pipe-aware write:
+	// 1) If fd is a pipe id (>= BUILT_IN_DESCRIPTORS), write to that pipe
+	// 2) Else if fd == STDOUT but the current process has STDOUT redirected to a pipe, write to that pipe
+	// 3) Else write to screen/tty
+	if (fd >= BUILT_IN_DESCRIPTORS) {
+		return (int32_t) writePipe(getpid(), (uint16_t)fd, __user_buf, (uint64_t)count);
+	}
+	if (fd == STDOUT) {
+		int16_t mapped = getCurrentProcessFileDescriptor(STDOUT);
+		if (mapped >= BUILT_IN_DESCRIPTORS) {
+			return (int32_t) writePipe(getpid(), (uint16_t)mapped, __user_buf, (uint64_t)count);
+		}
+	}
     return printToFd(fd, __user_buf, count);
 }
 
 int32_t sys_read(int32_t fd, signed char * __user_buf, int32_t count) {
+	// Pipe-aware read:
+	// 1) If fd is a pipe id (>= BUILT_IN_DESCRIPTORS), read from that pipe
+	// 2) Else if fd == STDIN but the current process has STDIN redirected to a pipe, read from that pipe
+	// 3) Else read from keyboard buffer
+	if (fd >= BUILT_IN_DESCRIPTORS) {
+		return (int32_t) readPipe((uint16_t)fd, (char *)__user_buf, (uint64_t)count);
+	}
+	if (fd == STDIN) {
+		int16_t mapped = getCurrentProcessFileDescriptor(STDIN);
+		if (mapped >= BUILT_IN_DESCRIPTORS) {
+			return (int32_t) readPipe((uint16_t)mapped, (char *)__user_buf, (uint64_t)count);
+		}
+	}
 	int32_t i;
 	int8_t c;
 	for(i = 0; i < count && (c = getKeyboardCharacter(AWAIT_RETURN_KEY | SHOW_BUFFER_WHILE_TYPING)) != EOF; i++){

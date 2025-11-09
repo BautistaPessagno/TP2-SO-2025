@@ -148,4 +148,7 @@ typedef struct {
 int32_t getMemoryState(MMState *state);
 int32_t printProcesses(void);
 
+// Pipes
+int16_t pipeGet(void);
+
 #endif

@@ -184,6 +184,105 @@ int main() {
 
     buffer[buffer_dim] = 0;
 
+    // Detect simple two-stage pipeline: left | right
+    char line_copy[MAX_BUFFER_SIZE];
+    strncpy(line_copy, command_history_buffer, MAX_BUFFER_SIZE - 1);
+    line_copy[MAX_BUFFER_SIZE - 1] = 0;
+    char *pipe_pos = 0;
+    {
+      int __i = 0;
+      while (line_copy[__i] != 0) {
+        if (line_copy[__i] == '|') { pipe_pos = &line_copy[__i]; break; }
+        __i++;
+      }
+    }
+
+    if (pipe_pos != NULL) {
+      // Split into left and right, trim leading/trailing spaces
+      *pipe_pos = 0;
+      char *left = line_copy;
+      char *right = pipe_pos + 1;
+      // Trim left
+      while (*left == ' ') left++;
+      char *end = left + strlen(left);
+      while (end > left && *(end - 1) == ' ') { *(--end) = 0; }
+      // Trim right
+      while (*right == ' ') right++;
+      end = right + strlen(right);
+      while (end > right && *(end - 1) == ' ') { *(--end) = 0; }
+
+      // Tokenize both sides
+      char *argvL[MAX_ARGS] = {0}, *argvR[MAX_ARGS] = {0};
+      int argcL = 0, argcR = 0;
+      char *tok = strtok(left, " ");
+      while (tok != NULL && argcL < MAX_ARGS - 1) {
+        argvL[argcL++] = tok;
+        tok = strtok(NULL, " ");
+      }
+      argvL[argcL] = NULL;
+      tok = strtok(right, " ");
+      while (tok != NULL && argcR < MAX_ARGS - 1) {
+        argvR[argcR++] = tok;
+        tok = strtok(NULL, " ");
+      }
+      argvR[argcR] = NULL;
+
+      if (argcL == 0 || argcR == 0) {
+        // Invalid pipeline, ignore silently
+        printf("\n");
+        buffer[0] = buffer_dim = 0;
+        continue;
+      }
+
+      // Find commands
+      int leftIdx = -1, rightIdx = -1;
+      for (int ii = 0; ii < sizeof(commands) / sizeof(Command); ii++) {
+        if (strcmp(commands[ii].name, argvL[0]) == 0) leftIdx = ii;
+        if (strcmp(commands[ii].name, argvR[0]) == 0) rightIdx = ii;
+      }
+      if (leftIdx == -1) {
+        fprintf(FD_STDERR, "\e[0;33mCommand not found:\e[0m %s\n", argvL[0]);
+        printf("\n");
+        buffer[0] = buffer_dim = 0;
+        continue;
+      }
+      if (rightIdx == -1) {
+        fprintf(FD_STDERR, "\e[0;33mCommand not found:\e[0m %s\n", argvR[0]);
+        printf("\n");
+        buffer[0] = buffer_dim = 0;
+        continue;
+      }
+
+      int16_t p = pipeGet();
+      if (p < 0) {
+        // If pipe cannot be created, abort silently
+        printf("\n");
+        buffer[0] = buffer_dim = 0;
+        continue;
+      }
+
+      int16_t fdsL[3] = {STDIN, p, STDERR};
+      int16_t fdsR[3] = {p, STDOUT, STDERR};
+
+      char **argsL = (argcL > 1) ? &argvL[1] : NULL;
+      char **argsR = (argcR > 1) ? &argvR[1] : NULL;
+
+      int32_t pidL = createProcessWithFds(commands[leftIdx].function, argsL, commands[leftIdx].name, DEFAULT_PRIORITY, fdsL);
+      int32_t pidR = createProcessWithFds(commands[rightIdx].function, argsR, commands[rightIdx].name, DEFAULT_PRIORITY, fdsR);
+
+      if (pidL >= 0) waitpid(pidL);
+      if (pidR >= 0) waitpid(pidR);
+
+      // Save to history
+      strncpy(command_history[command_history_last], command_history_buffer, 255);
+      command_history[command_history_last][buffer_dim] = '\0';
+      INC_MOD(command_history_last, HISTORY_SIZE);
+      last_command_arrowed = command_history_last;
+
+      buffer[0] = buffer_dim = 0;
+      continue;
+    }
+
     // Parse argv from the full command line (preserved in command_history_buffer)
     char *argv[MAX_ARGS] = {0};
     int argc = 0;

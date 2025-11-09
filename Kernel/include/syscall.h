@@ -18,3 +18,4 @@ int64_t my_wait(int64_t pid);
 // Extra utilities for userland
 int64_t my_mm_state(MMState *state);
 int64_t my_print_ps(void);
+int64_t my_pipe_get(void);

@@ -172,6 +172,10 @@ int32_t printProcesses(void) {
     return sys_print_ps();
 }
 
+extern int32_t sys_pipe_get(void);
+int16_t pipeGet(void) {
+    return (int16_t) sys_pipe_get();
+}
 void *malloc(uint64_t size) {
     return sys_malloc(size);
 }

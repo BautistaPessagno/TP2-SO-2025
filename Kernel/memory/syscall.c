@@ -241,3 +241,7 @@ int64_t my_print_ps(void) {
 
   return 0;
 }
+
+int64_t my_pipe_get(void) {
+  return getLastFreePipe();
+}
