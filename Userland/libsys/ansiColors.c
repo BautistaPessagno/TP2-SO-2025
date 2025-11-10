@@ -46,6 +46,7 @@ static void setANSIProp(uint8_t prop) {
             break;
         case 90:
             set_fn(0x00808080);
+            break;
         case 91:
             set_fn(0x00FF0000);
             break;

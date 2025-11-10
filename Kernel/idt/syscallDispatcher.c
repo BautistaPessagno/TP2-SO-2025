@@ -138,9 +138,13 @@ int32_t sys_read(int32_t fd, signed char * __user_buf, int32_t count) {
 		}
 	}
 	int32_t i;
-	int8_t c;
-	for(i = 0; i < count && (c = getKeyboardCharacter(AWAIT_RETURN_KEY | SHOW_BUFFER_WHILE_TYPING)) != EOF; i++){
-		*(__user_buf + i) = c;
+	int c;
+	for(i = 0; i < count; i++){
+		c = getKeyboardCharacter(AWAIT_RETURN_KEY | SHOW_BUFFER_WHILE_TYPING);
+		if (c == EOF) {
+			break;
+		}
+		*(__user_buf + i) = (int8_t)c;
 	}
     return i;
 }

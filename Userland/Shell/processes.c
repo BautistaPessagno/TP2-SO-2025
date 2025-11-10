@@ -111,9 +111,11 @@ int cmd_wc(int argc, char **argv) {
 	int c;
 	int bytes = 0, words = 0, lines = 0;
 	int in_word = 0;
-	while ((c = getchar()) != '\n' && c != -1) {
+	while ((c = getchar()) != -1) {
 		bytes++;
-		if (c == '\n') lines++;
+		if (c == '\n') {
+			lines++;
+		}
 		if (c == ' ' || c == '\t' || c == '\n') {
 			if (in_word) {
 				words++;
@@ -121,6 +123,9 @@ int cmd_wc(int argc, char **argv) {
 			}
 		} else {
 			in_word = 1;
+		}
+		if (c == '\n') {
+			break;
 		}
 	}
 	// Account last word if last char wasn't delimiter
@@ -138,4 +143,3 @@ int cmd_filter(int argc, char **argv) {
 	putchar('\n');
 	return 0;
 }
-

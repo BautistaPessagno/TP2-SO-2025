@@ -153,7 +153,11 @@ int8_t semDestroy(uint16_t id) {
 	SemaphoreManagerADT semManager = getSemaphoreManager();
 	if (semManager->semaphores[id] == NULL)
 		return -1;
-	freeSemaphore(semManager->semaphores[id]);
+	Semaphore *sem = semManager->semaphores[id];
+	if (isEmpty(sem->semaphoreQueue) == 0 || isEmpty(sem->mutexQueue) == 0) {
+		return -1; // still in use
+	}
+	freeSemaphore(sem);
 	semManager->semaphores[id] = NULL;
 	return 0;
 }

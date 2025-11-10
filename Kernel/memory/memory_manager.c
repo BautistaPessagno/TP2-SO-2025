@@ -10,7 +10,7 @@ extern uint8_t endOfKernel;
 
 // Estado interno (singleton)
 static Header base;                 // ancla de la free-list (lista circular)
-static MemoryManagerADT mm = 0;     // manager en dirección fija
+static MemoryManagerADT memory_manager = 0;     // manager en dirección fija
 
 // Convierte bytes a unidades de Header, incluyendo el header del bloque
 static size_t to_units(size_t nbytes) {
@@ -29,12 +29,12 @@ static uintptr_t align_up_uintptr(uintptr_t p, size_t a) {
 // Inserta un bloque libre bp en la free-list circular manteniendo orden por dirección.
 // Realiza coalescing con vecinos (merge con anterior y siguiente) si corresponde.
 static void insert_and_coalesce(Header *bp) {
-    Header *p = mm->free;
+    Header *p = memory_manager->free;
     if (p == 0) {
         // Lista aún no inicializada; crear lista con base como centinela
         base.s.next = &base;
         base.s.units = 0;
-        mm->free = &base;
+        memory_manager->free = &base;
         p = &base;
     }
 
@@ -63,7 +63,7 @@ static void insert_and_coalesce(Header *bp) {
     }
 
     // Mantener el puntero libre en algún nodo estable
-    mm->free = p;
+    memory_manager->free = p;
 }
 
 // Crea/Inicializa el memory manager en la dirección fija, con un pool fijo
@@ -82,47 +82,47 @@ MemoryManagerADT create_memory_manager(/* void* const restrict managed_memory, *
     uintptr_t manager_begin = align_up_uintptr(kernel_end + stack_size + page_size, page_size);
     
     // Construir el objeto en la dirección calculada (después del kernel)
-    mm = (MemoryManagerADT)manager_begin;
+    memory_manager = (MemoryManagerADT)manager_begin;
 
     // Calcular límites del pool administrado
     // Pool starts after manager + its size, aligned to Header boundary
-    uintptr_t manager_end   = manager_begin + (uintptr_t)sizeof(*mm);
+    uintptr_t manager_end   = manager_begin + (uintptr_t)sizeof(*memory_manager);
     uintptr_t aligned_pool_start = align_up_uintptr(manager_end, sizeof(Header));
     
-    // Pool ends before first user module (shell at 0x400000)
-    // Leave some margin: pool ends at 0x300000 (3MB) to be safe
-    uintptr_t pool_end_uint = (uintptr_t)MEMORY_MANAGER_LAST_ADDRESS; // exclusivo, antes de shell en 0x400000
+	// Pool ends before first user module (shell at 0x400000)
+	// Leave some margin: pool ends at 0x300000 (3MB) to be safe
+	const uintptr_t pool_end_uint = (uintptr_t)MEMORY_MANAGER_LAST_ADDRESS; // exclusivo, antes de shell en 0x400000
 
-	mm->pool_start    = (uint8_t *)aligned_pool_start;
-	mm->pool_end      = (uint8_t *)pool_end_uint;
-	mm->memory_amount = (uint64_t)(pool_end_uint - aligned_pool_start);
-	mm->allocated_bytes = 0;
+	memory_manager->pool_start    = (uint8_t *)aligned_pool_start;
+	memory_manager->memory_amount = (uint64_t)(pool_end_uint - aligned_pool_start);
+	memory_manager->pool_end      = memory_manager->pool_start + memory_manager->memory_amount;
+	memory_manager->allocated_bytes = 0;
 
     // Inicializar free-list (circular, ancla base)
     base.s.next = &base;
     base.s.units = 0;
-    mm->free = &base;
+    memory_manager->free = &base;
 
     // Crear el primer gran bloque libre que cubre todo el pool
-    if (mm->memory_amount >= sizeof(Header)) {
-        Header *first = (Header *)mm->pool_start;
-        first->s.units = (mm->memory_amount) / sizeof(Header);
+    if (memory_manager->memory_amount >= sizeof(Header)) {
+        Header *first = (Header *)memory_manager->pool_start;
+        first->s.units = (memory_manager->memory_amount) / sizeof(Header);
         // Insertarlo en la free-list y coalescar por si coincidiera con bordes
         insert_and_coalesce(first);
     }
 
-    return mm;
+    return memory_manager;
 }
 
 // Asigna nbytes del pool fijo usando first-fit. Split si el bloque es mayor.
 void *mm_malloc(size_t nbytes) {
-    if (mm == 0 || nbytes == 0) {
+    if (memory_manager == 0 || nbytes == 0) {
         return 0;
     }
 
     size_t nunits = to_units(nbytes);
 
-    Header *prevp = mm->free;    // prevp es el nodo anterior al que se va a asignar
+    Header *prevp = memory_manager->free;    // prevp es el nodo anterior al que se va a asignar
     if (prevp == 0) {
         return 0;
     }
@@ -139,12 +139,12 @@ void *mm_malloc(size_t nbytes) {
                 p += p->s.units;
                 p->s.units = nunits;
             }
-            mm->free = prevp;
+            memory_manager->free = prevp;
 			// Contabilizar bytes asignados (incluye header).
-			mm->allocated_bytes += (uint64_t)(nunits * sizeof(Header));
+			memory_manager->allocated_bytes += (uint64_t)(nunits * sizeof(Header));
             return (void *)(p + 1);
         }
-        if (p == mm->free) {
+        if (p == memory_manager->free) {
             // Recorrió toda la lista y no hay espacio
             return 0;
         }
@@ -153,7 +153,7 @@ void *mm_malloc(size_t nbytes) {
 
 // Libera un bloque y realiza coalescing con vecinos si corresponde.
 void mm_free(void *ptr) {
-    if (mm == 0 || ptr == 0) {
+    if (memory_manager == 0 || ptr == 0) {
         return;
     }
 
@@ -169,14 +169,14 @@ void mm_free(void *ptr) {
 
 	// Descontar bytes asignados por este bloque (incluye header)
 	uint64_t bytes = (uint64_t)(bp->s.units * sizeof(Header));
-	if (mm->allocated_bytes >= bytes) {
-		mm->allocated_bytes -= bytes;
+	if (memory_manager->allocated_bytes >= bytes) {
+		memory_manager->allocated_bytes -= bytes;
 	} else {
-		mm->allocated_bytes = 0; // clamp defensivo
+		memory_manager->allocated_bytes = 0; // clamp defensivo
 	}
 
     // Validar que el header cae dentro del pool
-    if ((uint8_t *)bp < mm->pool_start || (uint8_t *)bp >= mm->pool_end) {
+    if ((uint8_t *)bp < memory_manager->pool_start || (uint8_t *)bp >= memory_manager->pool_end) {
         return; // ignorar puntero inválido
     }
 
@@ -186,13 +186,13 @@ void mm_free(void *ptr) {
 
 MMState mm_state(void) {
 	MMState st = {0, 0, 0};
-	if (mm == 0) {
+	if (memory_manager == 0) {
 		return st;
 	}
-	st.total = mm->memory_amount;
-	st.allocated = mm->allocated_bytes;
-	st.available = (mm->memory_amount >= mm->allocated_bytes)
-		? (mm->memory_amount - mm->allocated_bytes)
+	st.total = memory_manager->memory_amount;
+	st.allocated = memory_manager->allocated_bytes;
+	st.available = (memory_manager->memory_amount >= memory_manager->allocated_bytes)
+		? (memory_manager->memory_amount - memory_manager->allocated_bytes)
 		: 0;
 	return st;
 }

@@ -64,7 +64,7 @@ int test_mm(int argc, char **argv) {
     
     if (iterations % 100000 == 0) {
       printf("test_mm: %d iterations\n", iterations);
-      printf("test_mm: %d blocks allocated, %d bytes used correctly\n", rq, total);
+      printf("test_mm: %d blocks allocated, %u bytes used correctly\n", rq, total);
     }
     iterations++;
   }

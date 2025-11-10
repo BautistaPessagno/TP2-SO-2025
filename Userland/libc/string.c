@@ -1,9 +1,9 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
-#include <string.h>
+#include <libc/string.h>
 #include <stdlib.h>
-#include <ctype.h>
+#include <libc/ctype.h>
 
 int strlen(const char * str) {
     int i = 0;
@@ -46,11 +46,13 @@ void strcpy(char * dest, char * src) {
 
 void strncpy(char * dest, char * src, int n) {
     int i = 0;
-    while (src[i] != 0 && i < n) {
+    while (i < n && src[i] != 0) {
         dest[i] = src[i];
         i++;
     }
-    dest[i] = 0;
+    while (i < n) {
+        dest[i++] = 0;
+    }
 }
 
 char * strtok(char * s1, const char * s2) {
