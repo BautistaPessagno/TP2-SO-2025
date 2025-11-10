@@ -72,7 +72,6 @@ void * initializeKernelBinary(){
     // Core managers and scheduler
     create_memory_manager(0);
     sched_init(4);
-    sched_set_idle_stack(getStackBase());
     createSemaphoreManager();
     createPipeManager();
     // Keyboard driver is interrupt-driven; no explicit init function required
@@ -84,9 +83,9 @@ int main(){
     setFontSize(2);
 
     // Create idle process (which will spawn shell)
-    char *argsIdle[3] = {"idle", "Hm?", NULL};
+    char *argsIdle[2] = {"IDLE", NULL};
     int16_t fdIdle[3] = {STDIN, STDOUT, STDERR};
-    createProcess((MainFunction)&idle, argsIdle, "idle", 1, fdIdle, 1);
+    createProcess((MainFunction)&idle, argsIdle, "IDLE", 0, fdIdle, 1);
 
     load_idt();
 

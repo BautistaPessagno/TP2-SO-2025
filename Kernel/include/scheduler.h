@@ -8,7 +8,6 @@ typedef struct SchedulerCDT *SchedulerADT;
 SchedulerADT createScheduler();
 // New scheduler API (wrappers) used by kernel and process subsystem
 void sched_init(uint8_t maxPriority);
-void sched_set_idle_stack(void *stackTop);
 uint16_t sched_getpid();
 void sched_yield();
 int32_t sched_kill_process(uint16_t pid, int32_t retValue);

@@ -12,7 +12,7 @@
 #define MIN_PRIORITY 0
 #define BLOCKED_INDEX QTY_READY_LEVELS
 #define MAX_PROCESSES (1 << 12)
-#define IDLE_PID 0
+#define IDLE_PID 1
 #define QUANTUM_COEF 2
 
 typedef struct SchedulerCDT {
@@ -148,41 +148,10 @@ void sched_init(uint8_t maxPriority) {
 	(void)maxPriority; // current implementation uses compile-time QTY_READY_LEVELS/MAX_PRIORITY
 	(void)createScheduler();
 	SchedulerADT scheduler = getSchedulerADT();
-	scheduler->currentPid = IDLE_PID;
+	scheduler->currentPid = 0;
 	scheduler->qtyProcesses = 0;
 	scheduler->remainingQuantum = 1;
 	scheduler->nextUnusedPid = 1;
-}
-
-void sched_set_idle_stack(void *stackTop) {
-	SchedulerADT scheduler = getSchedulerADT();
-	// Create a special idle "process" with PID 0 that is never queued
-	Process *idle = (Process *) mm_malloc(sizeof(Process));
-	if (idle == NULL)
-		return;
-	idle->pid = IDLE_PID;
-	idle->parentPid = 0;
-	idle->priority = MAX_PRIORITY;
-	idle->state = RUNNING;
-	idle->stackBase = stackTop;
-	idle->stackPos = stackTop;
-	idle->name = NULL;
-	idle->argv = NULL;
-	idle->zombieChildren = createLinkedListADT();
-	idle->waitingForPid = 0;
-	idle->retValue = 0;
-	idle->unkillable = 1;
-	idle->fileDescriptors[STDIN] = STDIN;
-	idle->fileDescriptors[STDOUT] = STDOUT;
-	idle->fileDescriptors[STDERR] = STDERR;
-
-	Node *idleNode = (Node *) mm_malloc(sizeof(Node));
-	if (idleNode == NULL)
-		return;
-	idleNode->data = (void *) idle;
-	scheduler->processes[IDLE_PID] = idleNode;
-	scheduler->currentPid = IDLE_PID;
-	scheduler->qtyProcesses = 1;
 }
 
 int sched_register_process(Process *process) {
@@ -194,7 +163,12 @@ int sched_register_process(Process *process) {
 	if (scheduler->processes[process->pid] != NULL)
 		return -1;
 	Node *processNode = appendElement(scheduler->levels[process->priority], (void *) process);
+	if (processNode == NULL)
+		return -1;
 	scheduler->processes[process->pid] = processNode;
+	if (process->pid == IDLE_PID) {
+		removeNode(scheduler->levels[process->priority], processNode);
+	}
 	scheduler->qtyProcesses++;
 	return 0;
 }
@@ -282,10 +256,23 @@ uint16_t getpid() {
 ProcessSnapshotList *getProcessSnapshot() {
 	SchedulerADT scheduler = getSchedulerADT();
 	ProcessSnapshotList *snapshotsArray = mm_malloc(sizeof(ProcessSnapshotList));
+	if (snapshotsArray == NULL)
+		return NULL;
+	if (scheduler->qtyProcesses == 0) {
+		mm_free(snapshotsArray);
+		return NULL;
+	}
 	ProcessSnapshot *psArray = mm_malloc(scheduler->qtyProcesses * sizeof(ProcessSnapshot));
+	if (psArray == NULL) {
+		mm_free(snapshotsArray);
+		return NULL;
+	}
 	int processIndex = 0;
 
-	loadSnapshot(&psArray[processIndex++], (Process *) scheduler->processes[IDLE_PID]->data);
+	Node *idleNode = scheduler->processes[IDLE_PID];
+	if (idleNode != NULL) {
+		loadSnapshot(&psArray[processIndex++], (Process *) idleNode->data);
+	}
 	for (int lvl = QTY_READY_LEVELS; lvl >= 0; lvl--) { // Se cuentan tambien los bloqueados
 		begin(scheduler->levels[lvl]);
 		while (hasNext(scheduler->levels[lvl])) {
