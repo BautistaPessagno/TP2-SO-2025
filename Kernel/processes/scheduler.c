@@ -192,6 +192,9 @@ void sched_yield() {
 }
 
 int32_t sched_kill_process(uint16_t pid, int32_t retValue) {
+	SchedulerADT scheduler = getSchedulerADT();
+	if(pid == scheduler->currentPid)
+		return -1;
 	return killProcessNoZombie(pid, retValue);
 }
 
