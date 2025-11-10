@@ -53,6 +53,7 @@ int cmd_block(int argc, char **argv);
 int cmd_cat(int argc, char **argv);
 int cmd_wc(int argc, char **argv);
 int cmd_filter(int argc, char **argv);
+int cmd_mvar(int argc, char **argv);
 
 // External commands implemented in Tests/
 int test_mm(int argc, char **argv);
@@ -130,6 +131,10 @@ Command commands[] = {
     {.name = "mem",
      .function = cmd_mem,
      .description = "Prints memory usage: total, used, free"},
+    {.name = "mvar",
+     .function = cmd_mvar,
+     .description =
+         "Simula una MVar: mvar [escritores] [lectores] (default 2/2)"},
     {.name = "ps",
      .function = cmd_ps,
      .description = "Lists processes: pid, ppid, prio, state, fg/bg, stack"},
