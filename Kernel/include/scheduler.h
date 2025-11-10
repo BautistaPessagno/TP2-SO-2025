@@ -29,4 +29,5 @@ void yield();
 int8_t changeFD(uint16_t pid, uint8_t position, int16_t newFd);
 int16_t getCurrentProcessFileDescriptor(uint8_t fdIndex);
 void killForegroundProcess();
+int32_t killProcessNoZombie(uint16_t pid, int32_t retValue);
 #endif

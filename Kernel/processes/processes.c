@@ -12,6 +12,20 @@
 #include <interrupts.h>
 
 static uint16_t next_pid = 1;
+// Simple PID reuse stack. When a process is fully destroyed,
+// its PID is returned here and can be reused for future processes.
+#define PID_POOL_MAX (1 << 12) /* aligned with scheduler's MAX_PROCESSES */
+static uint16_t reusablePids[PID_POOL_MAX];
+static uint16_t reusableCount = 0;
+
+void releasePid(uint16_t pid) {
+    if (pid == 0) {
+        return;
+    }
+    if (reusableCount < PID_POOL_MAX) {
+        reusablePids[reusableCount++] = pid;
+    }
+}
 
 static int count_args(char **argv) {
     if (argv == NULL) {
@@ -141,7 +155,12 @@ uint16_t createProcess(MainFunction code,
         Process *p = (Process*)mm_malloc(sizeof(Process));
     if (p == 0) return -1;
 uint16_t parent = sched_getpid(); // 0 if none yet
-uint16_t pid = next_pid++;
+uint16_t pid;
+if (reusableCount > 0) {
+    pid = reusablePids[--reusableCount];
+} else {
+    pid = next_pid++;
+}
 initProcess(p, pid, parent, code, args, name, priority, fileDescriptors, unkillable);
     if (sched_register_process(p) == -1) {
         mm_free(p);

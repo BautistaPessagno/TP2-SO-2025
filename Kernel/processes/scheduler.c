@@ -182,7 +182,7 @@ void sched_yield() {
 }
 
 int32_t sched_kill_process(uint16_t pid, int32_t retValue) {
-	return killProcess(pid, retValue);
+	return killProcessNoZombie(pid, retValue);
 }
 
 int32_t sched_set_priority(uint16_t pid, uint8_t newPriority) {
@@ -204,6 +204,7 @@ static void destroyZombie(SchedulerADT scheduler, Process *zombie) {
 	scheduler->processes[zombie->pid] = NULL;
 	freeProcess(zombie);
 	mm_free(zombieNode);
+	releasePid(zombie->pid);
 }
 
 int32_t killCurrentProcess(int32_t retValue) {
@@ -243,6 +244,35 @@ int32_t killProcess(uint16_t pid, int32_t retValue) {
 	else {
 		destroyZombie(scheduler, processToKill);
 	}
+	if (pid == scheduler->currentPid)
+		yield();
+	return 0;
+}
+
+int32_t killProcessNoZombie(uint16_t pid, int32_t retValue) {
+	SchedulerADT scheduler = getSchedulerADT();
+	Node *processToKillNode = scheduler->processes[pid];
+	if (processToKillNode == NULL)
+		return -1;
+	Process *processToKill = (Process *) processToKillNode->data;
+	if (processToKill->state == ZOMBIE || processToKill->unkillable)
+		return -1;
+
+	closeFileDescriptors(processToKill);
+
+	uint8_t priorityIndex = processToKill->state != BLOCKED ? processToKill->priority : BLOCKED_INDEX;
+	removeNode(scheduler->levels[priorityIndex], processToKillNode);
+	processToKill->retValue = retValue;
+
+	processToKill->state = ZOMBIE;
+
+	begin(processToKill->zombieChildren);
+	while (hasNext(processToKill->zombieChildren)) {
+		destroyZombie(scheduler, (Process *) next(processToKill->zombieChildren));
+	}
+	//skip zombie state and parent zombie list
+	
+	destroyZombie(scheduler, processToKill);
 	if (pid == scheduler->currentPid)
 		yield();
 	return 0;
