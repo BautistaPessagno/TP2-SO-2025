@@ -1,3 +1,6 @@
+// This is a personal academic project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
+
 // K&R-style free-list memory manager (freestanding, no libc)
 #include "../include/memory_manager.h"
 #include <stdint.h>
