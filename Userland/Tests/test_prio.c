@@ -3,19 +3,20 @@
 #include <libsys/sys.h>
 #include "tests/test_util.h"
 
-int static fileDescriptors[3] = {0, 1, 2};
+int16_t static fileDescriptors[3] = {0, 1, 2};
 
 uint64_t max_value = 0;
 
 #define MAX_PRIORITY 4
 
 
-void zero_to_max() {
+int zero_to_max(int argc, char **argv) {
   uint64_t value = 0;
 
   while (value++ != max_value);
 
   printf("PROCESS %d DONE!\n", getpid());
+  return 0;
 }
 
 int test_prio(int argc, char **argv) {
@@ -25,10 +26,10 @@ int test_prio(int argc, char **argv) {
     return -1;
   }
   uint64_t total_processes;
-  if ((total_processes = satoi(argv[0])) <= 0)
+  if ((total_processes = satoi(argv[0])) <= 0) {
     return -1;
-
-    uint8_t prio[total_processes];
+  }
+  uint8_t prio[total_processes];
 
   //dado el max le asignamos un valor aleatorio entre 0 y max_value
   for (uint64_t i = 0; i < total_processes; i++) {
@@ -79,4 +80,5 @@ int test_prio(int argc, char **argv) {
 
   for (i = 0; i < total_processes; i++)
     waitpid(pids[i]);
+  return 0;
 }

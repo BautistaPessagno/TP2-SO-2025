@@ -60,4 +60,8 @@ int32_t sys_get_character_without_display(void);
 int32_t sys_mm_state(void *state);
 int32_t sys_print_ps(void);
 
+// Memory syscalls
+void *sys_malloc(uint64_t size);
+int64_t sys_free(void *ptr);
+
 #endif

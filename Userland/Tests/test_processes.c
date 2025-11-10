@@ -11,7 +11,12 @@ typedef struct P_rq {
   enum State state;
 } p_rq;
 
-int static fileDescriptors[3] = {0, 1, 2};
+int16_t static fileDescriptors[3] = {0, 1, 2};
+
+static int endless_loop_entry(int argc, char **argv) {
+  endless_loop();
+  return 0;
+}
 
 int test_processes(int argc, char **argv) {
   uint8_t rq;
@@ -33,7 +38,7 @@ int test_processes(int argc, char **argv) {
 
     // Create max_processes processes
     for (rq = 0; rq < max_processes; rq++) {
-      p_rqs[rq].pid = createProcessWithFds(endless_loop, argvAux, "endless_loop", 4, fileDescriptors);
+      p_rqs[rq].pid = createProcessWithFds(endless_loop_entry, argvAux, "endless_loop", 4, fileDescriptors);
 
       if (p_rqs[rq].pid == -1) {
         printf("test_processes: ERROR creating process\n");

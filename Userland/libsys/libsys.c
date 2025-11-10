@@ -18,12 +18,12 @@ extern int32_t sys_nice_proc(uint64_t pid, uint64_t newPrio);
 extern int32_t sys_kill_proc(uint64_t pid);
 extern int32_t sys_block_proc(uint64_t pid);
 extern int32_t sys_unblock_proc(uint64_t pid);
-extern int32_t sys_sem_init(char *sem_id, uint64_t initialValue);
-extern int32_t sys_sem_open(char *sem_id, uint64_t initialValue);
-extern int32_t sys_sem_wait(char *sem_id);
-extern int32_t sys_sem_post(char *sem_id);
-extern int32_t sys_sem_close(char *sem_id);
-extern int32_t sys_sem_destroy(char *sem_id);
+extern int32_t sys_sem_init(uint16_t sem_id, uint64_t initialValue);
+extern int32_t sys_sem_open(uint16_t sem_id, uint64_t initialValue);
+extern int32_t sys_sem_wait(uint16_t sem_id);
+extern int32_t sys_sem_post(uint16_t sem_id);
+extern int32_t sys_sem_close(uint16_t sem_id);
+extern int32_t sys_sem_destroy(uint16_t sem_id);
 extern int32_t sys_yield_proc(void);
 extern int32_t sys_wait_proc(int64_t pid);
 extern int32_t sys_mm_state(void *state);
@@ -61,27 +61,27 @@ int32_t unblock(uint16_t pid) {
     return sys_unblock_proc(pid);
 }
 
-int32_t semInit(char *sem_id, uint32_t initialValue) {
+int32_t semInit(uint16_t sem_id, uint32_t initialValue) {
     return sys_sem_init(sem_id, initialValue);
 }
 
-int32_t semOpen(char *sem_id, uint32_t initialValue) {
+int32_t semOpen(uint16_t sem_id, uint32_t initialValue) {
     return sys_sem_open(sem_id, initialValue);
 }
 
-int32_t semWait(char *sem_id) {
+int32_t semWait(uint16_t sem_id) {
     return sys_sem_wait(sem_id);
 }
 
-int32_t semPost(char *sem_id) {
+int32_t semPost(uint16_t sem_id) {
     return sys_sem_post(sem_id);
 }
 
-int32_t semClose(char *sem_id) {
+int32_t semClose(uint16_t sem_id) {
     return sys_sem_close(sem_id);
 }
 
-int32_t semDestroy(char *sem_id) {
+int32_t semDestroy(uint16_t sem_id) {
     return sys_sem_destroy(sem_id);
 }
 

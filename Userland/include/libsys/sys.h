@@ -128,12 +128,12 @@ int32_t nice(uint16_t pid, uint8_t priority);
 int32_t block(uint16_t pid);
 int32_t unblock(uint16_t pid);
 
-int32_t semInit(char *sem_id, uint32_t initialValue);
-int32_t semOpen(char *sem_id, uint32_t initialValue);
-int32_t semWait(char *sem_id);
-int32_t semPost(char *sem_id);
-int32_t semClose(char *sem_id);
-int32_t semDestroy(char *sem_id);
+int32_t semInit(uint16_t sem_id, uint32_t initialValue);
+int32_t semOpen(uint16_t sem_id, uint32_t initialValue);
+int32_t semWait(uint16_t sem_id);
+int32_t semPost(uint16_t sem_id);
+int32_t semClose(uint16_t sem_id);
+int32_t semDestroy(uint16_t sem_id);
 
 // Memory API
 void *malloc(uint64_t size);

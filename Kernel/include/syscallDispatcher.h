@@ -23,7 +23,7 @@ typedef struct {
 	int64_t rip;
 } Registers;
 
-int32_t syscallDispatcher(Registers * registers);
+int64_t syscallDispatcher(Registers * registers);
 
 // Linux syscall prototypes
 int32_t sys_write(int32_t fd, char * __user_buf, int32_t count);

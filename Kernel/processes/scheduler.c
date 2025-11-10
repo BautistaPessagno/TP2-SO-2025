@@ -4,6 +4,7 @@
 #include <lib.h>
 #include <linkedListADT.h>
 #include <memory_manager.h>
+#include <processes.h>
 #include <scheduler.h>
 #include <stdlib.h>
 #include <video.h>

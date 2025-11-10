@@ -476,7 +476,7 @@ static int cmd_help(int argc, char **argv) {
            strlen(commands[i].name) < 4 ? "\t" : "", commands[i].description);
   }
   printf("\n");
-  return;
+  return 0;
 }
 
 static int cmd_clear(int argc, char **argv) {

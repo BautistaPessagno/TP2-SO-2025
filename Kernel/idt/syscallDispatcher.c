@@ -16,7 +16,7 @@ extern int64_t register_snapshot[18];
 extern int64_t register_snapshot_taken;
 
 // @todo Note: Technically.. registers on the stack are modifiable (since its a struct pointer, not struct). 
-int32_t syscallDispatcher(Registers * registers) {
+int64_t syscallDispatcher(Registers * registers) {
 	switch(registers->rax){
 		case 3: return sys_read(registers->rdi, (signed char *) registers->rsi, registers->rdx);
 		// Note: Register parameters are 64-bit
@@ -67,19 +67,19 @@ int32_t syscallDispatcher(Registers * registers) {
 		case 0x80000104: return my_block(registers->rdi);
 		case 0x80000105: return my_unblock(registers->rdi);
 		
-		case 0x80000110: return my_sem_init((char *) registers->rdi, registers->rsi);
-		case 0x80000111: return my_sem_open((char *) registers->rdi, registers->rsi);
-		case 0x80000112: return my_sem_wait((char *) registers->rdi);
-		case 0x80000113: return my_sem_post((char *) registers->rdi);
-		case 0x80000114: return my_sem_close((char *) registers->rdi);
-		case 0x80000115: return my_sem_destroy((char *) registers->rdi);
+		case 0x80000110: return my_sem_init((uint16_t) registers->rdi, (uint64_t)registers->rsi);
+		case 0x80000111: return my_sem_open((uint16_t) registers->rdi, (uint64_t)registers->rsi);
+		case 0x80000112: return my_sem_wait((uint16_t) registers->rdi);
+		case 0x80000113: return my_sem_post((uint16_t) registers->rdi);
+		case 0x80000114: return my_sem_close((uint16_t) registers->rdi);
+		case 0x80000115: return my_sem_destroy((uint16_t) registers->rdi);
 		
 		case 0x80000120: return my_yield();
 		case 0x80000121: return my_wait(registers->rdi);
 		case 0x80000130: return my_mm_state((MMState *) registers->rdi);
 		case 0x80000131: return my_print_ps();
-		case 0x80000132: return my_malloc(registers->rdi);
-		case 0x80000133: return my_free(registers->rdi);
+		case 0x80000132: return (int64_t) my_malloc((uint64_t)registers->rdi);
+		case 0x80000133: return my_free((void *)registers->rdi);
 		case 0x80000140: return my_pipe_get();
 		
 		default:

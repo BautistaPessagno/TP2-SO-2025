@@ -26,9 +26,7 @@ static const char *const reader_colors[] = {
 
 #define MAX_READERS ((int)(sizeof(reader_colors) / sizeof(reader_colors[0])))
 
-static inline char *sem_handle(uint16_t id) {
-    return (char *)(uint64_t)id;
-}
+static inline uint16_t sem_handle(uint16_t id) { return id; }
 
 static void random_delay(void) {
     uint32_t spins = MIN_DELAY_SPINS + GetUniform(RANDOM_DELAY_SPINS);

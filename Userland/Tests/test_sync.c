@@ -8,7 +8,7 @@
 
 int64_t global; // shared memory
 
-int static fileDescriptors[3] = {0, 1, 2};
+int16_t static fileDescriptors[3] = {0, 1, 2};
 
 void slowInc(int64_t *p, int64_t inc) {
   uint64_t aux = *p;

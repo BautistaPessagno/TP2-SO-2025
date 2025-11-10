@@ -99,33 +99,33 @@ int64_t my_unblock(uint64_t pid) {
   return sched_set_status(pid, READY);
 }
 
-int64_t my_sem_init(char *sem_id, uint64_t initialValue) {
-  return semInit(sem_id, initialValue);
+int64_t my_sem_init(uint16_t sem_id, uint64_t initialValue) {
+  return semInit(sem_id, (uint32_t)initialValue);
 }
 
-int64_t my_sem_open(char *sem_id, uint64_t initialValue) {
+int64_t my_sem_open(uint16_t sem_id, uint64_t initialValue) {
   int8_t ret = semOpen(sem_id);
   if(ret == -1) {
-    semInit(sem_id, initialValue);
+    semInit(sem_id, (uint32_t)initialValue);
     ret = semOpen(sem_id);
     return ret;
   }
   return ret;
 }
 
-int64_t my_sem_wait(char *sem_id) {
+int64_t my_sem_wait(uint16_t sem_id) {
   return semWait(sem_id);
 }
 
-int64_t my_sem_post(char *sem_id) {
+int64_t my_sem_post(uint16_t sem_id) {
   return semPost(sem_id);
 }
 
-int64_t my_sem_close(char *sem_id) {
+int64_t my_sem_close(uint16_t sem_id) {
   return semClose(sem_id);
 }
 
-int64_t my_sem_destroy(char *sem_id) {
+int64_t my_sem_destroy(uint16_t sem_id) {
   return semDestroy(sem_id);
 }
 
