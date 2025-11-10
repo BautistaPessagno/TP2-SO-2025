@@ -216,6 +216,7 @@ static void destroyZombie(SchedulerADT scheduler, Process *zombie) {
 	scheduler->qtyProcesses--;
 	scheduler->processes[zombie->pid] = NULL;
 	freeProcess(zombie);
+	mm_free(zombie);
 	mm_free(zombieNode);
 	releasePid(zombie->pid);
 }
