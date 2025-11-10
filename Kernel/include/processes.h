@@ -92,4 +92,5 @@ uint16_t createProcess(MainFunction code,
     const int16_t fileDescriptors[3],
     uint8_t unkillable);
 
+void releasePid(uint16_t pid);
 #endif
