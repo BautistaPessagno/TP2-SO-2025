@@ -3,9 +3,11 @@
 
 #include <libc/stdio.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <syscalls.h>
 
 #include <exceptions.h>
 #include <sys.h>
@@ -14,7 +16,12 @@
 #include <ansiColors.h>
 #endif
 
-static void *const snakeModuleAddress = (void *)0x500000;
+static const uintptr_t snakeModuleAddress = 0x500000;
+
+static inline int32_t execModule(uintptr_t address) {
+  int32_t (*entry)(void) = (int32_t (*)(void))(uintptr_t)address;
+  return exec(entry);
+}
 
 #define MAX_BUFFER_SIZE 1024
 #define HISTORY_SIZE 10
@@ -198,8 +205,6 @@ int main() {
       continue;
     };
 
-    buffer[buffer_dim] = 0;
-
     // checkea si hay un & al final y lo elimina
     uint8_t run_in_background = stripBackgroundMarker();
 
@@ -328,14 +333,17 @@ int main() {
     }
     argv[argc] = NULL;
 
+    char *command = NULL;
+    char **command_args = NULL;
+
     if (argc == 0) {
       printf("\n");
       buffer[0] = buffer_dim = 0;
       continue;
     }
 
-    char *command = argv[0];
-    char **command_args = argc > 1 ? &argv[1] : NULL;
+    command = argv[0];
+    command_args = argc > 1 ? &argv[1] : NULL;
     int i = 0;
 
     for (; i < sizeof(commands) / sizeof(Command); i++) {
@@ -363,10 +371,8 @@ int main() {
 
     // If the command is not found, ignore \n
     if (i == sizeof(commands) / sizeof(Command)) {
-      if (command != NULL && *command != '\0') {
+      if (*command != '\0') {
         fprintf(FD_STDERR, "\e[0;33mCommand not found:\e[0m %s\n", command);
-      } else if (command == NULL) {
-        printf("\n");
       }
     }
 
@@ -427,11 +433,22 @@ static void saveCommandToHistory(uint8_t run_in_background) {
   buffer_dim = original_len;
 }
 
+static void writeHistoryEntryToInput(const char *entry) {
+  if (entry == NULL) {
+    return;
+  }
+  size_t len = strlen(entry);
+  if (len == 0) {
+    return;
+  }
+  sys_write(FD_STDIN, entry, len);
+}
+
 static void printPreviousCommand(enum REGISTERABLE_KEYS scancode) {
   clearInputBuffer();
   last_command_arrowed = SUB_MOD(last_command_arrowed, 1, HISTORY_SIZE);
   if (command_history[last_command_arrowed][0] != 0) {
-    fprintf(FD_STDIN, command_history[last_command_arrowed]);
+    writeHistoryEntryToInput(command_history[last_command_arrowed]);
   }
 }
 
@@ -439,7 +456,7 @@ static void printNextCommand(enum REGISTERABLE_KEYS scancode) {
   clearInputBuffer();
   last_command_arrowed = (last_command_arrowed + 1) % HISTORY_SIZE;
   if (command_history[last_command_arrowed][0] != 0) {
-    fprintf(FD_STDIN, command_history[last_command_arrowed]);
+    writeHistoryEntryToInput(command_history[last_command_arrowed]);
   }
 }
 
@@ -547,10 +564,15 @@ static int cmd_regs(int argc, char **argv) {
   printf("Latest register snapshot:\n");
 
   for (int i = 0; i < 18; i++) {
-    printf("\e[0;34m%s\e[0m: %x\n", register_names[i], registers[i]);
+    printf("\e[0;34m%s\e[0m: %llx\n", register_names[i],
+           (unsigned long long)registers[i]);
   }
 
   return 0;
 }
 
-static int cmd_snake(int argc, char **argv) { return exec(snakeModuleAddress); }
+static int cmd_snake(int argc, char **argv) {
+  (void)argc;
+  (void)argv;
+  return execModule(snakeModuleAddress);
+}

@@ -9,7 +9,9 @@
 
 // <----------------------------------------------------------------------- DEFINES ----------------------------------------------------------------------->
 
-#define VALID_DIFFICULTY(c) (c == 'E' || c == 'e' || c == 'M' || c == 'm'|| c == 'H' || c == 'h' || c == 'D' || c == 'd')
+#define VALID_DIFFICULTY(c) (((c) == 'E') || ((c) == 'e') || ((c) == 'M') || \
+                             ((c) == 'm') || ((c) == 'H') || ((c) == 'h') || \
+                             ((c) == 'D') || ((c) == 'd'))
 
 #define DIRECTIONS 4
 #define BEGIN_GAME_KEY '\n'
@@ -22,7 +24,7 @@
 #define ENDED_BY_MAX_SIZE 3
 
 #define INITIAL_BODY_SIZE 3
-#define MAX_BODY_SIZE 100 + INITIAL_BODY_SIZE + 1   // so that the snake eats 100 foods
+#define MAX_BODY_SIZE (100 + INITIAL_BODY_SIZE + 1)   // so that the snake eats 100 foods
 #define SQUARE_DIM 32
 #define MAX_SNAKES 2
 #define HEAD 0
@@ -262,13 +264,13 @@ static void welcomePlayers(void) {
 
 
     int dif_result = 0;
-    char difficulty[1] = {0};
+    char difficulty[2] = {0};
 
     do{
         do{
-            printf("\n\tEnter difficulty\n");
-            printf("\t(E)asy, (M)edium, (H)ard, (D)emon: ");   
-            dif_result = scanf("%s", difficulty);
+                printf("\n\tEnter difficulty\n");
+                printf("\t(E)asy, (M)edium, (H)ard, (D)emon: ");
+                dif_result = scanf("%1s", difficulty);
             
         } while(dif_result != 1);
 
@@ -616,7 +618,6 @@ static void checkFoodEaten(void) {
 
 // Hand transpiled from https://github.com/hughsk/glsl-hsv2rgb/blob/master/index.glsl
 #define clamp(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
-#define abs(a) ((a) < 0 ? -(a) : (a))
 #define fract256(x) ((x) % 256)
 // Hand transpiled from https://github.com/hughsk/glsl-hsv2rgb/blob/master/index.glsl
 static uint32_t hsv2rgb(uint8_t h, uint8_t s, uint8_t v) {

@@ -75,26 +75,35 @@ int8_t setStatus(uint16_t pid, uint8_t newStatus) {
 		return -1;
 	Process *process = (Process *) node->data;
 	ProcessState oldStatus = process->state;
+	// Disallow invalid targets and transitions from zombies
 	if (newStatus == RUNNING || newStatus == ZOMBIE || oldStatus == ZOMBIE)
 		return -1;
+	// If no effective change requested, report failure for syscall semantics
 	if (newStatus == process->state)
-		return newStatus;
+		return -1;
 
-	process->state = newStatus;
+	// Enforce allowed transitions:
+	// READY/RUNNING -> BLOCKED
+	// BLOCKED -> READY
 	if (newStatus == BLOCKED) {
+		// Already filtered newStatus != oldStatus, so only allow if not BLOCKED
 		removeNode(scheduler->levels[process->priority], node);
 		appendNode(scheduler->levels[BLOCKED_INDEX], node);
-		// setPriority(pid, process->priority == MAX_PRIORITY ? MAX_PRIORITY : process->priority + 1);
-	}
-	else if (oldStatus == BLOCKED) {
+		process->state = BLOCKED;
+		return BLOCKED;
+	} else if (newStatus == READY) {
+		// Only allow unblocking from BLOCKED state
+		if (oldStatus != BLOCKED)
+			return -1;
 		removeNode(scheduler->levels[BLOCKED_INDEX], node);
-		// Se asume que ya tiene un nivel predefinido
-		// appendNode(scheduler->levels[process->priority], node);
 		process->priority = MAX_PRIORITY;
 		prependNode(scheduler->levels[process->priority], node);
 		scheduler->remainingQuantum = 0;
+		process->state = READY;
+		return READY;
 	}
-	return newStatus;
+	// Any other requested state is not permitted here
+	return -1;
 }
 
 ProcessState getProcessStatus(uint16_t pid) {
@@ -183,6 +192,9 @@ void sched_yield() {
 }
 
 int32_t sched_kill_process(uint16_t pid, int32_t retValue) {
+	SchedulerADT scheduler = getSchedulerADT();
+	if(pid == scheduler->currentPid)
+		return -1;
 	return killProcessNoZombie(pid, retValue);
 }
 
@@ -204,6 +216,7 @@ static void destroyZombie(SchedulerADT scheduler, Process *zombie) {
 	scheduler->qtyProcesses--;
 	scheduler->processes[zombie->pid] = NULL;
 	freeProcess(zombie);
+	mm_free(zombie);
 	mm_free(zombieNode);
 	releasePid(zombie->pid);
 }

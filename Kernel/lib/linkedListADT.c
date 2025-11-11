@@ -164,15 +164,13 @@ void *removeNode(LinkedListADT list, Node *node) {
         if (list->last == node) {
             list->last = node->next; // por seguridad
         }
-    } else if (node->next == NULL) {
-        // último (y hay anterior)
-        list->last = node->prev;
-        if (node->prev != NULL) {
-            node->prev->next = NULL;
-        }
-        list->len--;
-        if (list->first == node) {
-            list->first = node->prev; // por seguridad
+	    } else if (node->next == NULL) {
+	        // último (y hay anterior)
+	        list->last = node->prev;
+	        node->prev->next = NULL;
+	        list->len--;
+	        if (list->first == node) {
+	            list->first = node->prev; // por seguridad
         }
     } else {
         // intermedio

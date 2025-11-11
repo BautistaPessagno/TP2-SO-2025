@@ -26,8 +26,16 @@ extern uint8_t endOfKernel;
 
 static const uint64_t PageSize = 0x1000;
 
-static void * const shellModuleAddress = (void *)0x400000;
-static void * const snakeModuleAddress = (void *)0x500000;
+static const uintptr_t shellModuleAddress = 0x400000;
+static const uintptr_t snakeModuleAddress = 0x500000;
+
+static inline void *moduleAddressPtr(uintptr_t address) {
+    return (void *)(uintptr_t)address;
+}
+
+static inline MainFunction moduleEntry(uintptr_t address) {
+    return (MainFunction)(uintptr_t)address;
+}
 
 typedef int (*EntryPoint)();
 
@@ -44,7 +52,7 @@ static int idle(int argc, char **argv) {
     char *argsShell[2] = {"shell", NULL};
     int16_t fdsShell[3] = {STDIN, STDOUT, STDERR};
     // le pasa max priority 4 que es mas alta que idle
-    createProcess((MainFunction)shellModuleAddress, argsShell, "shell", 4, fdsShell, 1);
+    createProcess(moduleEntry(shellModuleAddress), argsShell, "shell", 4, fdsShell, 1);
 
     while (1) { _hlt(); }
     return 0;
@@ -64,8 +72,8 @@ void * getStackBase() {
 
 void * initializeKernelBinary(){
     void * moduleAddresses[] = {
-        shellModuleAddress,
-        snakeModuleAddress,
+        moduleAddressPtr(shellModuleAddress),
+        moduleAddressPtr(snakeModuleAddress),
     };
 
     loadModules(&endOfKernelBinary, moduleAddresses);

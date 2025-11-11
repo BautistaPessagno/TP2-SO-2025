@@ -30,3 +30,4 @@ Userland/**/*.bin
 Userland/*.a
 test_mm
 Kernel/test_mm
+.vscode/settings.json

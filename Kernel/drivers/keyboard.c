@@ -15,7 +15,7 @@
 #define IS_ALPHA(c) ('a' <= (c) && (c) <= 'z') 
 #define TO_UPPER(c) (IS_ALPHA(c) ? ((c) - 'a' + 'A') : (c))
 
-#define IS_KEYCODE(c) (c >= ESCAPE_KEY && c <= F12_KEY)
+#define IS_KEYCODE(c) (((c) >= ESCAPE_KEY) && ((c) <= F12_KEY))
 #define IS_PRINTABLE(c) (\
     IS_KEYCODE((c)) && (\
     ((c) >= 0x02 && (c) <= 0x0D) || /* 1,2,3,4,5,6,7,8,9,0,-,= */ \
@@ -45,7 +45,8 @@ typedef struct {
     SpecialKeyHandler fn;
 } RegisteredKeys;
 
-static RegisteredKeys KeyFnMap[ F12_KEY - ESCAPE_KEY + 1 ] = {0};
+#define KEY_FN_MAP_LEN (F12_KEY - ESCAPE_KEY + 1)
+static RegisteredKeys KeyFnMap[ KEY_FN_MAP_LEN ] = {0};
 
 // QEMU source https://github.com/qemu/qemu/blob/master/pc-bios/keymaps/en-us
 // http://flint.cs.yale.edu/feng/cos/resources/BIOS/Resources/assembly/makecodes.html
@@ -143,27 +144,39 @@ static const uint8_t scancodeMap[][2] = {
     /* 0x58 */ { F12_KEY, F12_KEY },
 };
 
+static inline RegisteredKeys *getKeyFnEntry(uint8_t keycode) {
+    if (!IS_KEYCODE(keycode)) {
+        return NULL;
+    }
+    return &KeyFnMap[keycode - ESCAPE_KEY];
+}
+
 void restoreKeyFnMapNonKernel(SpecialKeyHandler * map) {
-    for(uint8_t i = ESCAPE_KEY; i < F12_KEY; i++){
-        if (KeyFnMap[i].registered_from_kernel == 0) {
-            KeyFnMap[i].fn = map[i];
+    for(uint8_t code = ESCAPE_KEY; code <= F12_KEY; code++){
+        RegisteredKeys *entry = getKeyFnEntry(code);
+        if (entry != NULL && entry->registered_from_kernel == 0) {
+            size_t idx = code - ESCAPE_KEY;
+            entry->fn = map[idx];
         }
     }
 }
 
 void clearKeyFnMapNonKernel(SpecialKeyHandler * map) {
-    for(uint8_t i = ESCAPE_KEY; i < F12_KEY; i++){
-        if (KeyFnMap[i].registered_from_kernel == 0) {
-            map[i] = KeyFnMap[i].fn;
-            KeyFnMap[i].fn = NULL;
+    for(uint8_t code = ESCAPE_KEY; code <= F12_KEY; code++){
+        RegisteredKeys *entry = getKeyFnEntry(code);
+        if (entry != NULL && entry->registered_from_kernel == 0) {
+            size_t idx = code - ESCAPE_KEY;
+            map[idx] = entry->fn;
+            entry->fn = NULL;
         }
     }
 }
 
 uint8_t registerSpecialKey(enum KEYS scancode, SpecialKeyHandler fn, uint8_t registeredFromKernel) {
-    if (IS_KEYCODE(scancode) && ((registeredFromKernel != 0 || (registeredFromKernel == 0 && KeyFnMap[scancode].fn == NULL)))) {
-        KeyFnMap[scancode].fn = fn;
-        KeyFnMap[scancode].registered_from_kernel = registeredFromKernel;
+    RegisteredKeys *entry = getKeyFnEntry((uint8_t)scancode);
+    if (entry != NULL && (registeredFromKernel != 0 || entry->fn == NULL)) {
+        entry->fn = fn;
+        entry->registered_from_kernel = registeredFromKernel;
         return 1;
     }
 
@@ -243,7 +256,9 @@ uint8_t keyboardHandler(){
         return scancode; // do not write to buffer anymore, subsequent keys are not processed into the buffer
     }
     
-    switch (makeCode(scancode)) {
+    const uint8_t keycode = makeCode(scancode);
+
+    switch (keycode) {
         case SHIFT_KEY_L:
         case SHIFT_KEY_R:
             SHIFT_KEY_PRESSED = is_pressed;
@@ -255,14 +270,14 @@ uint8_t keyboardHandler(){
             if (is_pressed)
                 CAPS_LOCK_KEY_PRESSED = !CAPS_LOCK_KEY_PRESSED;
             break;
-
-        return scancode;
     }
     
-    if (! (is_pressed && IS_KEYCODE(scancode)) ) return scancode; // ignore break or unsupported scancodes
+    if (!(is_pressed && IS_KEYCODE(keycode))) {
+        return scancode; // ignore break or unsupported scancodes
+    }
     
     // Global Ctrl+C detection (works even when no stdin read is in progress)
-    if (CONTROL_KEY_PRESSED && is_pressed && makeCode(scancode) == 0x2E) { // scancode 0x2E == 'c'/'C'
+    if (CONTROL_KEY_PRESSED && keycode == 0x2E) { // scancode 0x2E == 'c'/'C'
         to_read = to_write = 0;         // flush input buffer
         killForegroundProcess();        // request scheduler to kill fg process
         print("CTRL+C pressed\n");
@@ -270,20 +285,20 @@ uint8_t keyboardHandler(){
     }
     
     if ((keyboard_options & MODIFY_BUFFER) != 0) {
-        int8_t c = scancodeMap[scancode][SHIFT_KEY_PRESSED];
+        int8_t c = scancodeMap[keycode][SHIFT_KEY_PRESSED];
 
         if (CAPS_LOCK_KEY_PRESSED == 1) {
             c = TO_UPPER(c);
         }
 
         // Detect Ctrl + D: push EOF sentinel into input buffer (no echo)
-        if (CONTROL_KEY_PRESSED && is_pressed && makeCode(scancode) == 0x20) { // scancode 0x20 == 'd'/'D'
+        if (CONTROL_KEY_PRESSED && keycode == 0x20) { // scancode 0x20 == 'd'/'D'
             buffer[to_write] = EOF;
             INC_MOD(to_write, BUFFER_SIZE);
             return scancode;
         }
 
-        if (IS_PRINTABLE(scancode)) {
+        if (IS_PRINTABLE(keycode)) {
             if(c == RETURN_KEY){
                 c = NEW_LINE_CHAR;
                 // Handle \n on the keyboard interrupt handler, to avoid the possibility of triggering multiple \n inputs continously on the same sys_read
@@ -302,8 +317,9 @@ uint8_t keyboardHandler(){
     }
 
     // Call the registered function for the key, if any
-    if (KeyFnMap[scancode].fn != 0) {
-        KeyFnMap[scancode].fn(scancode);
+    RegisteredKeys *entry = getKeyFnEntry(keycode);
+    if (entry != NULL && entry->fn != NULL) {
+        entry->fn(keycode);
     }
 
     return scancode;

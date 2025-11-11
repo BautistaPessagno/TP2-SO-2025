@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 
+int abs(int value);
 int rand(void);
 
 void srand(unsigned int seed);

@@ -79,7 +79,7 @@ uint64_t test_sync(uint64_t argc, char *argv[]) { //{n, use_sem, 0}
   if (satoi(argv[1]) == 1)
     semClose(SEM_ID);
 
-  printf("Final value: %d\n", global);
+  printf("Final value: %lld\n", (long long)global);
 
   return 0;
 }

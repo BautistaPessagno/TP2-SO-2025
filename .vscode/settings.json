@@ -6,6 +6,7 @@
         "stdio.h": "c",
         "string.h": "c",
         "stddef.h": "c",
-        "test_mm.h": "c"
+        "test_mm.h": "c",
+        "condition_variable": "c"
     }
 }

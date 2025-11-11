@@ -59,7 +59,7 @@ int test_prio(int argc, char **argv) {
   for (i = 0; i < total_processes; i++) {
     pids[i] = createProcessWithFds(zero_to_max, ztm_argv, "zero_to_max", 0, fileDescriptors);
     nice(pids[i], prio[i]);
-    printf("  PROCESS %d NEW PRIORITY: %d\n", pids[i], prio[i]);
+    printf("  PROCESS %lld NEW PRIORITY: %u\n", (long long)pids[i], prio[i]);
   }
 
   // Expect the priorities to take effect
@@ -73,7 +73,7 @@ int test_prio(int argc, char **argv) {
     pids[i] = createProcessWithFds(zero_to_max, ztm_argv, "zero_to_max", 0, fileDescriptors);
     block(pids[i]);
     nice(pids[i], prio[i]);
-    printf("  PROCESS %d NEW PRIORITY: %d\n", pids[i], prio[i]);
+    printf("  PROCESS %lld NEW PRIORITY: %u\n", (long long)pids[i], prio[i]);
   }
 
   for (i = 0; i < total_processes; i++)
