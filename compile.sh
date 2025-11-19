@@ -7,6 +7,15 @@ YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
 NC='\033[0m'
 
+# Build mode: default K&R, optional "buddy"
+MM_ARG=""
+if [ "$1" = "buddy" ]; then
+    MM_ARG="MM_IMPL=buddy"
+    echo "${GREEN}Using buddy memory manager (MM_IMPL=buddy).${NC}"
+else
+    echo "${GREEN}Using default memory manager (K&R).${NC}"
+fi
+
 docker ps -a &> /dev/null
 
 if [ $? -ne 0 ]; then
@@ -40,9 +49,9 @@ else
 fi
 
 # Compiles
-docker exec $DOCKER_EXEC_FLAGS "$CONTAINER_NAME" make clean -C /root/ && \
-docker exec $DOCKER_EXEC_FLAGS "$CONTAINER_NAME" make all -C /root/Toolchain && \
-docker exec $DOCKER_EXEC_FLAGS "$CONTAINER_NAME" make all -C /root/
+docker exec $DOCKER_EXEC_FLAGS "$CONTAINER_NAME" make clean -C /root/ $MM_ARG && \
+docker exec $DOCKER_EXEC_FLAGS "$CONTAINER_NAME" make all -C /root/Toolchain $MM_ARG && \
+docker exec $DOCKER_EXEC_FLAGS "$CONTAINER_NAME" make all -C /root/ $MM_ARG
 
 
 if [ $? -ne 0 ]; then

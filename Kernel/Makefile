@@ -1,7 +1,18 @@
 include Makefile.inc
 
 KERNEL=kernel.bin
-SOURCES=$(wildcard *.c ./drivers/*.c ./idt/*.c ./lib/*.c ./processes/*.c ./pipes/*.c ./semaphore/*.c) ./memory/memory_manager.c
+
+# Memory manager selection (default: K&R free-list)
+# Usage: make MM_IMPL=buddy   -> use ./memory/memory_buddy.c
+#        make MM_IMPL=kr      -> use ./memory/memory_manager.c (default)
+MM_IMPL ?= kr
+ifeq ($(MM_IMPL),buddy)
+MM_SOURCE=./memory/memory_buddy.c
+else
+MM_SOURCE=./memory/memory_manager.c
+endif
+
+SOURCES=$(wildcard *.c ./drivers/*.c ./idt/*.c ./lib/*.c ./processes/*.c ./pipes/*.c ./semaphore/*.c) $(MM_SOURCE)
 SOURCES_ASM=$(wildcard asm/*.asm)
 HOT_OBJECTS=./drivers/video.o fonts.o # Compiled with -O3
 OBJECTS=$(SOURCES:.c=.o)
