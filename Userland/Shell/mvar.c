@@ -17,8 +17,8 @@
 #define MVAR_PRINT_SEM_ID 3702
 
 #define MVAR_PROCESS_PRIORITY 2
-#define MIN_DELAY_SPINS 25000u
-#define RANDOM_DELAY_SPINS 100000u
+#define MIN_DELAY_SPINS 225000u
+#define RANDOM_DELAY_SPINS 900000u
 
 static volatile char mvar_slot = 0;
 
