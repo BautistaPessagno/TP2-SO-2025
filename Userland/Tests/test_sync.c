@@ -7,7 +7,8 @@
 #include "tests/test_util.h"
 
 #define SEM_ID 67
-#define TOTAL_PAIR_PROCESSES 2
+
+#define MAX_PAIR_PROCESSES 170
 
 int64_t global; // shared memory
 
@@ -55,6 +56,8 @@ int my_process_inc(int argc, char **argv) {
 }
 
 uint64_t test_sync(uint64_t argc, char *argv[]) { //{n, use_sem, 0}
+  uint64_t processes_count = satoi(argv[0]);
+  uint64_t TOTAL_PAIR_PROCESSES = processes_count > MAX_PAIR_PROCESSES ? MAX_PAIR_PROCESSES : processes_count;
   uint64_t pids[2 * TOTAL_PAIR_PROCESSES];
 
   if (argc != 2)
@@ -79,7 +82,7 @@ uint64_t test_sync(uint64_t argc, char *argv[]) { //{n, use_sem, 0}
   if (satoi(argv[1]) == 1)
     semClose(SEM_ID);
 
-  printf("Final value: %lld\n", (long long)global);
+  printf("Final value: %d\n", (int)global);
 
   return 0;
 }

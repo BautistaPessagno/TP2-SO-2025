@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <libc/string.h>
 #include <sys.h>
 
 #include "tests/test_util.h"
@@ -16,8 +17,8 @@
 #define MVAR_PRINT_SEM_ID 3702
 
 #define MVAR_PROCESS_PRIORITY 2
-#define MIN_DELAY_SPINS 15000u
-#define RANDOM_DELAY_SPINS 60000u
+#define MIN_DELAY_SPINS 25000u
+#define RANDOM_DELAY_SPINS 100000u
 
 static volatile char mvar_slot = 0;
 
@@ -25,6 +26,16 @@ static const char *const reader_colors[] = {
     "\e[31m", "\e[32m", "\e[33m", "\e[34m", "\e[35m", "\e[36m", "\e[37m",
     "\e[90m", "\e[91m", "\e[92m", "\e[93m", "\e[94m", "\e[95m", "\e[96m",
     "\e[97m"
+};
+
+#define READER_FORMAT(c) c "%c\e[0m"
+static const char *const reader_formats[] = {
+    READER_FORMAT("\e[31m"), READER_FORMAT("\e[32m"), READER_FORMAT("\e[33m"),
+    READER_FORMAT("\e[34m"), READER_FORMAT("\e[35m"), READER_FORMAT("\e[36m"),
+    READER_FORMAT("\e[37m"),
+    READER_FORMAT("\e[90m"), READER_FORMAT("\e[91m"), READER_FORMAT("\e[92m"),
+    READER_FORMAT("\e[93m"), READER_FORMAT("\e[94m"), READER_FORMAT("\e[95m"),
+    READER_FORMAT("\e[96m"), READER_FORMAT("\e[97m")
 };
 
 #define MAX_READERS ((int)(sizeof(reader_colors) / sizeof(reader_colors[0])))
@@ -155,8 +166,19 @@ static int writer_process(int argc, char **argv) {
 
 static int reader_process(int argc, char **argv) {
     (void)argc;
-    static const char *const default_color = "\e[0m";
-    const char *color = (argv == NULL || argv[0] == NULL) ? default_color : argv[0];
+    static const char *const default_format = "%c";
+    const char *arg_color = (argv == NULL || argv[0] == NULL) ? NULL : argv[0];
+
+    // Map the provided color escape string to a format that embeds ANSI in the format string
+    const char *print_format = default_format;
+    if (arg_color != NULL) {
+        for (int i = 0; i < MAX_READERS; i++) {
+            if (strcmp(arg_color, reader_colors[i]) == 0) {
+                print_format = reader_formats[i];
+                break;
+            }
+        }
+    }
 
     while (1) {
         random_delay();
@@ -166,7 +188,7 @@ static int reader_process(int argc, char **argv) {
         semPost(sem_handle(MVAR_EMPTY_SEM_ID));
 
         semWait(sem_handle(MVAR_PRINT_SEM_ID));
-        printf("%s%c\e[0m", color, value);
+        printf(print_format, value);
         semPost(sem_handle(MVAR_PRINT_SEM_ID));
 
         yield();
