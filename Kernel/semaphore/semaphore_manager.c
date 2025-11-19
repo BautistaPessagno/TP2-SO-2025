@@ -128,7 +128,7 @@ static int up(Semaphore *sem) {
 	// Si hay procesos esperando por el semáforo, reanudar uno
 	resumeFirstAvailableProcess(sem->semaphoreQueue);
 	releaseMutex(sem);
-	// yield();
+	yield();
 	return 0;
 }
 

@@ -119,29 +119,34 @@ void *schedule(void *prevStackPointer) {
 	SchedulerADT scheduler = getSchedulerADT();
 
 	scheduler->remainingQuantum--;
-	if (!scheduler->qtyProcesses || scheduler->remainingQuantum > 0)
+	if (!scheduler->qtyProcesses) {
 		return prevStackPointer;
+	}
 
 	Process *currentProcess;
 	Node *currentProcessNode = scheduler->processes[scheduler->currentPid];
 
 	if (currentProcessNode != NULL) {
 		currentProcess = (Process *) currentProcessNode->data;
-		if (!firstTime)
+		if (!firstTime) {
 			currentProcess->stackPos = prevStackPointer;
-		else
+		} else {
 			firstTime = 0;
-		if (currentProcess->state == RUNNING)
+		}
+		// If still RUNNING and has quantum left, keep executing it
+		if (currentProcess->state == RUNNING && scheduler->remainingQuantum > 0) {
+			return prevStackPointer;
+		}
+		// Time slice expired: demote only if it was RUNNING
+		if (currentProcess->state == RUNNING) {
 			currentProcess->state = READY;
-
-		uint8_t newPriority = currentProcess->priority > 0 ? currentProcess->priority - 1 : currentProcess->priority;
-		setPriority(currentProcess->pid, newPriority);
+			uint8_t newPriority = currentProcess->priority > 0 ? currentProcess->priority - 1 : currentProcess->priority;
+			setPriority(currentProcess->pid, newPriority);
+		}
 	}
 
 	scheduler->currentPid = getNextPid(scheduler);
 	currentProcess = scheduler->processes[scheduler->currentPid]->data;
-
-	
 	if (scheduler->killFgProcess && currentProcess->fileDescriptors[STDIN] == STDIN) {
 		print("Killing foreground process\n");
 		scheduler->killFgProcess = 0;

@@ -54,7 +54,9 @@ static int idle(int argc, char **argv) {
     // le pasa max priority 4 que es mas alta que idle
     createProcess(moduleEntry(shellModuleAddress), argsShell, "shell", 4, fdsShell, 1);
 
-    while (1) { _hlt(); }
+    while (1) { 
+        _hlt(); 
+    }
     return 0;
 }
 
@@ -92,6 +94,9 @@ void * initializeKernelBinary(){
 
 int main(){ 
     setFontSize(2);
+
+    semInit(1, 0);
+    semOpen(1);
 
     // Create idle process (which will spawn shell)
     char *argsIdle[2] = {"IDLE", NULL};

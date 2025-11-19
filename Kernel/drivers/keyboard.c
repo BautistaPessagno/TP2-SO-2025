@@ -7,6 +7,7 @@
 #include <cursor.h>
 #include <stddef.h>
 #include <scheduler.h>
+#include <semaphore_manager.h>
 
 #define BUFFER_SIZE 1024
 
@@ -239,7 +240,9 @@ int8_t getKeyboardCharacter(enum KEYBOARD_OPTIONS ops) {
         to_write == to_read || // always get at least one char from the buffer if empty
         (   (keyboard_options & AWAIT_RETURN_KEY) && // wait for \n or EOF to be entered by the user
             !(buffer[SUB_MOD(to_write, 1, BUFFER_SIZE)] == NEW_LINE_CHAR || buffer[SUB_MOD(to_write, 1, BUFFER_SIZE)] == EOF)
-        )) _hlt();
+        )) {
+            semWait(1);
+        };
 
     keyboard_options = 0;
     int8_t aux = buffer[to_read];
@@ -281,6 +284,7 @@ uint8_t keyboardHandler(){
         to_read = to_write = 0;         // flush input buffer
         killForegroundProcess();        // request scheduler to kill fg process
         print("CTRL+C pressed\n");
+        semPost(1);
         return scancode;
     }
     
@@ -295,6 +299,7 @@ uint8_t keyboardHandler(){
         if (CONTROL_KEY_PRESSED && keycode == 0x20) { // scancode 0x20 == 'd'/'D'
             buffer[to_write] = EOF;
             INC_MOD(to_write, BUFFER_SIZE);
+            semPost(1);
             return scancode;
         }
 
@@ -310,6 +315,7 @@ uint8_t keyboardHandler(){
             }
 
             addCharToBuffer(c, keyboard_options & SHOW_BUFFER_WHILE_TYPING);
+            semPost(1);
         } else if (c == BACKSPACE_KEY && to_write != to_read) {
             DEC_MOD(to_write, BUFFER_SIZE);
             clearPreviousCharacter();
@@ -321,7 +327,6 @@ uint8_t keyboardHandler(){
     if (entry != NULL && entry->fn != NULL) {
         entry->fn(keycode);
     }
-
     return scancode;
 
 }
