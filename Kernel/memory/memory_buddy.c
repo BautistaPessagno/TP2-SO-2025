@@ -4,7 +4,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static Header base;                 // ancla de la free-list (lista circular)
 static MemoryManagerADT mm = 0;     // manager en dirección fija
 
 extern uint8_t endOfKernel;
@@ -146,15 +145,13 @@ static void coalesce_all(void){
     do {
         merged = 0;
         Header *p = mm->free;
-        Header *prev = NULL;
         while (p != NULL && p->s.next != NULL) {
             Header *q = p->s.next;
             if (are_buddies(p, q)) {
                 p->s.units *= 2;
                 p->s.next = q->s.next;
                 merged = 1;
-            } else {
-                prev = p;
+            } else {   
                 p = q;
             }
         }
