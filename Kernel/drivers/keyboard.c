@@ -7,6 +7,7 @@
 #include <cursor.h>
 #include <stddef.h>
 #include <scheduler.h>
+#include <semaphore_manager.h>
 
 #define BUFFER_SIZE 1024
 
@@ -275,7 +276,6 @@ uint8_t keyboardHandler(){
     }
     
     if (!(is_pressed && IS_KEYCODE(keycode))) {
-        semPost(1);
         return scancode; // ignore break or unsupported scancodes
     }
     
@@ -308,7 +308,6 @@ uint8_t keyboardHandler(){
                 c = NEW_LINE_CHAR;
                 // Handle \n on the keyboard interrupt handler, to avoid the possibility of triggering multiple \n inputs continously on the same sys_read
                 if ( (to_write != to_read) && buffer[SUB_MOD(to_write, 1, BUFFER_SIZE)] == NEW_LINE_CHAR ) {
-                    semPost(1);
                     return scancode;
                 }
             } else if(c == TABULATOR_KEY){
@@ -316,6 +315,7 @@ uint8_t keyboardHandler(){
             }
 
             addCharToBuffer(c, keyboard_options & SHOW_BUFFER_WHILE_TYPING);
+            semPost(1);
         } else if (c == BACKSPACE_KEY && to_write != to_read) {
             DEC_MOD(to_write, BUFFER_SIZE);
             clearPreviousCharacter();
@@ -327,8 +327,6 @@ uint8_t keyboardHandler(){
     if (entry != NULL && entry->fn != NULL) {
         entry->fn(keycode);
     }
-
-    semPost(1);
     return scancode;
 
 }

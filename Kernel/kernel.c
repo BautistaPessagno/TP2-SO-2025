@@ -55,7 +55,6 @@ static int idle(int argc, char **argv) {
     createProcess(moduleEntry(shellModuleAddress), argsShell, "shell", 4, fdsShell, 1);
 
     while (1) { 
-        print("now im in the idle process\n");
         _hlt(); 
     }
     return 0;
